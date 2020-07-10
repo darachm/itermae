@@ -42,10 +42,12 @@ MAINTAINER darachm
 %environment
 
     export LANG="C.UTF-8"
+    export LANG_ALL="C.UTF-8"
 
 %post
 
     export LANG="C.UTF-8"
+    export LANG_ALL="C.UTF-8"
     export DEBIAN_FRONTEND="noninteractive"
 
     apt-get -y update
@@ -55,8 +57,14 @@ MAINTAINER darachm
 
     pip3 install regex==2019.02.18
 
+    parallel --citation
+
 %test
 
+    export LANG="C.UTF-8"
+    export LANG_ALL="C.UTF-8"
     /usr/bin/python3 /itermae.py -h
+    echo "a b c" | parallel echo | gawk '{print $0}' | sort
+    
 
 
