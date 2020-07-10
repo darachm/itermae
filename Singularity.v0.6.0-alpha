@@ -43,6 +43,7 @@ MAINTAINER darachm
 
     export LANG="C.UTF-8"
     export LANG_ALL="C.UTF-8"
+    export PATH=PATH:/
 
 %post
 
@@ -59,11 +60,14 @@ MAINTAINER darachm
 
     parallel --citation
 
+    export PATH=PATH:/
+
 %test
 
     export LANG="C.UTF-8"
     export LANG_ALL="C.UTF-8"
-    /usr/bin/python3 /itermae.py -h
+    export PATH=PATH:/
+    itermae.py -h
     echo "a b c" | parallel echo | gawk '{print $0}' | sort
     
 
