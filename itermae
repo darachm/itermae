@@ -61,7 +61,6 @@ class SeqHolder:
 
         # Here we execute the actual meat of the business
         fuzzy_match = regex.search( str(self.seqs[input_group].seq).upper() )
-#TODO make sure regex is coerced to upper
 
         if self.verbosity >= 3:
             print("\n["+str(time.time())+"] : match is : "+str(fuzzy_match),
@@ -339,10 +338,12 @@ if __name__ == '__main__':
 
     # Input determination 
     parser.add_argument("--input",default="STDIN",
-        help="We expect this is normally NOT USED, and so I will expect "+
+        help="We expect this flag is normally NOT USED, and so I will expect "+
             "FASTQ(Z) input on the STDIN. However, you can specify a path "+
             "using this flag to read from a file. This is not parallelized, "+
-            "so it's slower. But it's there.")
+            "so it's slower. But it's there. "+
+            "Importantly, ALL SEQUENCE is coerced to uppercase letters before "+
+            "matching, for speed. So keep it uppercase in the regex.")
     # Is it gzip'd ?
     parser.add_argument("-z","--gzipped",action="store_true",
         help="This flag indicates that input, be it STDIN or a file path, "+
@@ -385,13 +386,15 @@ if __name__ == '__main__':
     ### CLI operation and output specification
     # Operations
     parser.add_argument("--operation","-o",action="append",
-        help="The pattern to match and extract. This has a "+
-            "specific and sort of complicated syntax. Refer to "+
-            "the documentation via the README.md file, or to "+
-            "the original regex module documentation. "+
-            "They are chained in the order you specify. "+
-            "You can't name a group 'input' or 'dummyspacer', I'm using those "+
-            "names !")
+        help="The pattern to match and extract. This has a specific and sort "+
+            "of complicated syntax. Copy and tweak examples, and/or refer to "+
+            "the documentation via the README.md file, or to the original "+
+            "regex module documentation. Each operation is done in the order "+
+            "you specify, so later operations can use previous matching "+
+            "groups as inputs. But, you can't name a group 'input' or "+
+            "'dummyspacer', I'm using those names ! "+
+            "Importantly, WRITE ALL DNA BASES AS UPPERCASE. I won't coerce "+
+            "it in the regex because that messes up group names.")
     # Filter specification
     parser.add_argument("--filter","-f",action="append",
         help="Filters for eliminating reads that don't pass some criteria. "+
@@ -408,14 +411,15 @@ if __name__ == '__main__':
             "original FASTQ read ID, and 'group.seq' to get the sequence of a "+
             "particular group, so for example you could do "+
             "'input.id+\"_\"+index.seq' to append the index sequence to the "+
-            "FASTQ ID.")
+            "FASTQ ID. Unlike output-seq, this a string not a Sequence object.")
     parser.add_argument("--output-seq",action="append",
         help="A list of output seq definitions, in the same order as for "+
             "output-ids. This is evaluated on the groups being Biopython "+
-            "SeqRecords, so you need to just specify the names of the "+
-            "captured groups. You can't access .id or _length properties or "+
-            "the like! This is not for that, put it in the "+
-            "output-id. Why? Because we need the qualities for printing.")
+            "SeqRecords, so you you can paste them together like "+
+            "'sample+barcode' or 'sample+dummyspacer+barcode+dummyspacer+umi' "+
+            "if you'd like a spacer X character to delimit them specifically. "+
+            "You can't access .id or _length properties or the like, just "+
+            "groups. Unlike output-id, this a Sequence object not a string.")
 
     ### Parse the arguments, check them.
 
