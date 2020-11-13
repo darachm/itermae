@@ -4,6 +4,45 @@ This is a python script that parses FASTQ format reads using patterns.
 Specifically, it uses fuzzy regular expressions, so patterns that allow some
 degeneracy and using the sequence, not just position, to parse reads.
 
+# Availability, installation, 'installation'
+
+TODO THIS needs to be tested cleaned up, just skeletoning now
+
+1. You can clone this repo, or download just the `itermae.py` script and run it.
+    You'll need to install what's in `REQUIREMENTS`, so 
+    `python3 -m pip install REQUIREMENTS`.
+1. You can use [Singularity](syslab.org) to pull and run a 
+    [Singularity image of itermae.py](), where everything is already installed.
+    This is recommended.
+1. TODO gonna try the pip thing
+
+# Usage
+
+`itermae.py` is intended to be used in a pipe-line where you are un-gzipping 
+your FASTQZ file using `zcat`, piping it into GNU `parallel`, then piping
+standard output (STDOUT) to the file you want to make for the outputs.
+However, there are alternative usages involving inputs and output files.
+But, there _is no parallelization within itermae_. This functionality was
+removed to permit more flexible parallelization with GNU `parallel`.
+Do one thing well, right?
+
+Here's an example you can run, if you've cloned this repo:
+
+    zcat example_data/barseq.fastqz \
+        | parallel   \
+            itermae  \
+        > output.sam
+
+
+
+
+Oh, and this is for BASH shells on Linux/Unix boxes ! I have no idea how
+OSX/windows stuff works. Are you unfamiliar with this? If you're at a 
+university, ask your librarian. If you're not, look it up online or use the
+lessons at Software Carpentries. Or tweet at me about it...
+
+# Details
+
 In this version, it is essentially a wrapper for the `regex` package of fuzzy
 regular expression functions, and it combines this with some helpful 
 functionality. It iterates through each parsing operation, allowing one to
@@ -11,6 +50,7 @@ split complex parsing expressions into simpler (and faster) steps. It allows
 for specifying arbitrary filters that are directly `eval`'d on the sequence
 objects to allow for using quality filtering with matching-group-level 
 statistics.
+
 
 
 <!--
