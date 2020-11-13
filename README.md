@@ -1,13 +1,19 @@
 # itermae
 
-itermae.py parses Illumina reads using patterns to extract barcodes.
+This is a python script that parses FASTQ format reads using patterns. 
+Specifically, it uses fuzzy regular expressions, so patterns that allow some
+degeneracy and using the sequence, not just position, to parse reads.
+
+In this version, it is essentially a wrapper for the `regex` package of fuzzy
+regular expression functions, and it combines this with some helpful 
+functionality. It iterates through each parsing operation, allowing one to
+split complex parsing expressions into simpler (and faster) steps. It allows
+for specifying arbitrary filters that are directly `eval`'d on the sequence
+objects to allow for using quality filtering with matching-group-level 
+statistics.
 
 
 <!--
-
-By using fuzzy regular expressions we can chop robustly barcodes from 
-indeterminate positions, filter the results based on sequence or match 
-properties, and reassemble a fastq record from the results.
 
 Available as 
 [a singularity containter](https://www.singularity-hub.org/collections/1361)!
