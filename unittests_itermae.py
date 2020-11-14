@@ -38,10 +38,11 @@ class TestItermae(unittest.TestCase):
     def test_SeqHolder_matchAndFilter(self):
         input_seqs = SeqIO.parse(self.input_fastq,"fastq")
         filter_results = []
+        outputs = []
         for i in input_seqs:
             this = SeqHolder(i,verbosity=0)
             this.apply_operation('a','input',
-                regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=1}(?P<rest>TCT.*){e<=1}",
+                regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
                     regex.BESTMATCH) )
             this.apply_operation('b','rest',
                 regex.compile("(?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})CGTACGCTGCAGGTCGAC",
@@ -55,13 +56,18 @@ class TestItermae(unittest.TestCase):
             filter_results.append(
                 this.apply_filters(['sample.length == 5 and rest.start >= 15'])
                 )
+            try:
+                this_output = this.build_output(
+                        "input.id+'_'+sample.seq+'_'+umi1.seq+umi2.seq+umi3.seq",
+                        "strain" ) 
+                outputs.append( ( this_output.id, this_output.seq ) )
+            except:
+                outputs.append(None)
         self.assertListEqual(filter_results,[[True],[True],[False],[True]])
-
-#        --output-seq "strain" \
-#        --output-id "input.id+'_'+sample.seq" --report report \
-#        --filter "sample.length == 5 and rest.start >= 16"  -v --output-format sam
-            #self.assertEqual(this.verbosity,)
-    
+        self.assertListEqual(outputs,[None,None,None,
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:19701_CTACT_GAG',
+                    'GATGCACTGCGTTCCATGTT')
+                ])
 
         
     
