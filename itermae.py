@@ -110,6 +110,15 @@ class SeqHolder:
 
         return out_seq
 
+    def format_report(self,label,output_seq,evaluated_filters):
+        return ( "\""+label+"\",\""+
+            str(self.seqs['input'].id)+"\",\""+
+            str(self.seqs['input'].seq)+"\",\""+
+            str(output_seq)+"\",\""+
+            str(evaluated_filters)+"\",\""+
+            "-".join([ i+"_"+self.group_stats[i].flatten() 
+                        for i in self.group_stats ] )+
+            "\"" )
 
 
 
@@ -239,14 +248,9 @@ def chop(
 
         # So if we should write this per-record report
         if report is not None:
-            print("\"FailedFilter\",\""+
-                str(seq_holder.seqs['input'].seq)+"\",\""+
-                str(evaluated_filters)+"\",\""+
-                str(seq_holder.seqs['input'].id)+"\",\""+
-                str(seq_holder.seqs['input'].seq)+"\",\""+
-                "\,".join( [ i+"_"+seq_holder.group_stats[i].flatten() 
-                                for i in seq_holder.group_stats ] )+
-                "\"",file=report)
+            print( seq_holder.format_report("FailedFilter",
+                    seq_holder.seqs['input'].seq, evaluated_filters)
+                ,file=report)
 
         if failed is not None:
             SeqIO.write(seq_holder.seqs['input'], failed, "fastq")
@@ -281,14 +285,9 @@ def chop(
 
                 # If we want to write the report, we make it
                 if report is not None:
-                    print("\"Passed\",\""+
-                        str(output_record.seq)+"\",\""+
-                        str(evaluated_filters)+"\",\""+
-                        str(seq_holder.seqs['input'].id)+"\",\""+
-                        str(seq_holder.seqs['input'].seq)+"\",\""+
-                        "\,".join( [ i+"_"+seq_holder.group_stats[i].flatten() 
-                                for i in seq_holder.group_stats ] )+
-                            "\"",file=report)
+                    print( seq_holder.format_report("Passed",
+                            output_record.seq, evaluated_filters)
+                        ,file=report)
 
             if verbosity >= 2:
                 print("\n["+str(time.time())+"] : evaluated the "+
@@ -305,14 +304,10 @@ def chop(
 
             # If we want to write the report, we make it
             if report is not None:
-                print("\"FailedDirectivesToMakeOutputSeq\",\""+
-                    str(seq_holder.seqs['input'].seq)+"\",\""+
-                    str(evaluated_filters)+"\",\""+
-                    str(seq_holder.seqs['input'].id)+"\",\""+
-                    str(seq_holder.seqs['input'].seq)+"\",\""+
-                    "\,".join( [ i+"_"+seq_holder.group_stats[i].flatten() 
-                            for i in seq_holder.group_stats ] )+
-                        "\"",file=report)
+                print( 
+                    seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
+                        seq_holder.seqs['input'].seq, evaluated_filters)
+                    ,file=report)
 
             if failed is not None:
                 SeqIO.write(input_record, failed, "fastq")
