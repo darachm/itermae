@@ -30,6 +30,7 @@ class MatchScores:
             str(self.insertions)+"_"+\
             str(self.deletions)
 
+
 class GroupStats:
     """
     This just makes an object to hold these three where they're easy to type
@@ -41,6 +42,7 @@ class GroupStats:
         self.length = self.end - self.start
     def flatten(self):
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
+
 
 class SeqHolder: 
     """
@@ -162,19 +164,16 @@ class SeqHolder:
             "\"" )
 
 
-
-
-
-def reader(input_file, is_gzipped, 
-        output_file, failed_file, report_file,
+def reader(
+        input_file, is_gzipped, 
         operations_array, filters , outputs_array,
-        out_format,
+        out_format, output_file, failed_file, report_file,
         verbosity
         ):
-
     """
     This reads inputs, calls the `chop` function on each one, and sorts it
-    off to outputs.
+    off to outputs. So this is called by the main function, and is all about
+    the IO. 
     """
 
     ### Open up file handles
@@ -576,16 +575,13 @@ if __name__ == '__main__':
         print("\n["+str(time.time())+"] : BEGIN RUNNING",file=sys.stderr)
     
     reader(
-        vars(args)["input"],
-        args.gzipped,
-        vars(args)["output"],
-        vars(args)["failed"],
-        vars(args)["report"],
-        operations_array, 
-        args.filter ,
-        outputs_array,
-        args.output_format,
-        args.verbose
+        input_file=vars(args)["input"], is_gzipped=args.gzipped,
+        operations_array=operations_array, filters=args.filter, 
+        outputs_array=outputs_array,
+        out_format=args.output_format,
+        output_file=vars(args)["output"],failed_file=vars(args)["failed"],
+        report_file=vars(args)["report"],
+        verbosity=args.verbose
         )
 
     print("\n"+"["+str(time.time())+"]"+" : "+
