@@ -5,11 +5,11 @@ import unittest
 from itermae import *
 from Bio import SeqIO, Seq, SeqRecord
 import gzip
+import io
 
 class TestItermae(unittest.TestCase):
     def setUp(self):
-        self.input_fastq  = "example-data/test.fastq"
-        self.input_fastqz = "example-data/test.fastqz"
+        self.input_fastq = "example-data/test.fastq"
 
     def test_MatchScores(self):
         this = MatchScores(1,2,3)
@@ -39,6 +39,7 @@ class TestItermae(unittest.TestCase):
         input_seqs = SeqIO.parse(self.input_fastq,"fastq")
         filter_results = []
         outputs = []
+        reports = []
         for i in input_seqs:
             this = SeqHolder(i,verbosity=0)
             this.apply_operation('a','input',
@@ -61,13 +62,29 @@ class TestItermae(unittest.TestCase):
                         "input.id+'_'+sample.seq+'_'+umi1.seq+umi2.seq+umi3.seq",
                         "strain" ) 
                 outputs.append( ( this_output.id, this_output.seq ) )
+                reports.append(this.format_report("pass",this_output.seq,
+                        filter_results))
             except:
                 outputs.append(None)
+                reports.append(this.format_report("fail",this.seqs['input'],
+                        filter_results))
         self.assertListEqual(filter_results,[[True],[True],[False],[True]])
         self.assertListEqual(outputs,[None,None,None,
                 ('NB501157:100:H5J5LBGX2:1:11101:10000:19701_CTACT_GAG',
                     'GATGCACTGCGTTCCATGTT')
                 ])
 
-        
-    
+    def test_reader_fastq(self):
+#        with open(z,"rb"):
+#        reader(
+#            input_file=vars(args)["input"], is_gzipped=args.gzipped,
+#            operations_array=operations_array, filters=args.filter, 
+#            outputs_array=outputs_array,
+#            out_format=args.output_format,
+#            output_file=vars(args)["output"],failed_file=vars(args)["failed"],
+#            report_file=vars(args)["report"],
+#            verbosity=args.verbose
+#            )
+        pass
+
+
