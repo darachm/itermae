@@ -17,6 +17,10 @@ from Bio import SeqIO
 from Bio import Seq, SeqRecord
 
 class MatchScores:
+    """
+    This just makes an object to hold these three where they're easy to type
+    (as attributes not keyed dict). Well, and a flatten function for printing.
+    """
     def __init__(self, substitutions, insertions, deletions):
         self.substitutions = substitutions
         self.insertions = insertions
@@ -27,6 +31,10 @@ class MatchScores:
             str(self.deletions)
 
 class GroupStats:
+    """
+    This just makes an object to hold these three where they're easy to type
+    (as attributes not keyed dict). Well, and a flatten function for printing.
+    """
     def __init__(self, start, end):
         self.start = start 
         self.end = end 
@@ -35,17 +43,29 @@ class GroupStats:
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 class SeqHolder: 
+    """
+    This is the main holder of sequences, and does the matching and stuff.
+    I figured a Class might make it a bit tidier.
+    """
     def __init__(self, input_record, verbosity=4):
+        # So the .seqs holds the sequences accessed by the matching, and there's
+        # a dummyspacer in there just for making outputs where you want that
+        # for later partitioning. Input is input.
         self.seqs = {
             'dummyspacer': SeqRecord.SeqRecord(Seq.Seq("X"),id="dummyspacer"),
-            'input': input_record 
-            }
+            'input': input_record }
         self.seqs['dummyspacer'].letter_annotations['phred_quality'] = [40]
         self.verbosity = verbosity
+        # These two dicts hold the scores for each match operation (in order),
+        # and the start end length statistics for each matched group.
         self.match_scores = {}
         self.group_stats = {}
 
     def apply_operation(self, match_id, input_group, regex):
+        """
+        This applies the matches, saves how it did, and saves extracted groups.
+        Details commented below.
+        """
 
         # Try to find the input, if it ain't here then just return
         try: 
@@ -59,7 +79,8 @@ class SeqHolder:
                 str(regex)+" against "+self.seqs[input_group].seq,
                 file=sys.stderr)
 
-        # Here we execute the actual meat of the business
+        # Here we execute the actual meat of the business.
+        # Note that the input is made uppercase.
         fuzzy_match = regex.search( str(self.seqs[input_group].seq).upper() )
 
         if self.verbosity >= 3:
@@ -67,25 +88,34 @@ class SeqHolder:
                 file=sys.stderr)
 
         try:
+            # This is making and storing an object for just accessing these
+            # numbers nicely in the arguments for forming outputs and filtering.
             self.match_scores[match_id] = MatchScores(*fuzzy_match.fuzzy_counts)
 
             # Then for each of the groups matched by the regex
             for match_name in fuzzy_match.groupdict():
     
-                # We stick into the holder
-                # a slice of the input seq, that is the matched
-                # span of this matching group
+                # We stick into the holder a slice of the input seq, that is 
+                # the matched # span of this matching group. So, extract.
                 self.seqs[match_name] = \
                     self.seqs[input_group][slice(*fuzzy_match.span(match_name))]
     
-                # Then we record the start, end, and length of the
-                # matched span, again only if we have filters
+                # Then we record the start, end, and length of the matched span
                 self.group_stats[match_name] = GroupStats(*fuzzy_match.span(match_name))
 
         except:
             self.match_scores[match_id] = MatchScores(None,None,None)
 
     def apply_filters(self, filters):
+        """
+        This is for applying written filters to the results, so you can fail
+        things that don't look right by position of the matches, or the
+        statistics of each match. 
+        First we unpack all the group and match stats/scores, so you can
+        access them in defining filters easily.
+        Then we're just straight eval'ing in that context, because I'm not
+        thinking about security at all.
+        """
 
         env_thing = { **self.group_stats , **self.match_scores }
 
@@ -100,9 +130,16 @@ class SeqHolder:
                     return([False])
         except:
             return([False])
-        return(return_object)
+
+        return return_object
 
     def build_output(self,output_id_def,output_seq_def):
+        """
+        Similar thing as above, but just making it flat of all the seqs
+        so you can build what you want in the outputs. First we make the output
+        seq object, then the ID (which can have seqs in it, as part of the ID, 
+        so like extracted UMIs or sample-indicies).
+        """
 
         env_thing = { **self.seqs }
         out_seq = eval(output_seq_def,globals(),env_thing)
@@ -111,6 +148,10 @@ class SeqHolder:
         return out_seq
 
     def format_report(self,label,output_seq,evaluated_filters):
+        """
+        This is for formatting a standard report line for the reporting function
+        """
+        
         return ( "\""+label+"\",\""+
             str(self.seqs['input'].id)+"\",\""+
             str(self.seqs['input'].seq)+"\",\""+
@@ -508,6 +549,7 @@ if __name__ == '__main__':
             print("\n["+str(time.time())+"] : and a report to '"+
                 vars(args)["report"]+".",file=sys.stderr)
 
+# I should implement the below ... but really?
 #    # checking file existance for outputs, zipping together the 
 #    # output base with each of the three. 
 #    exit_flag = 0
@@ -529,11 +571,6 @@ if __name__ == '__main__':
 #    if exit_flag == 1:
 #        exit(1)
 
-#    # memory debugging
-#    if args.memory_tracking:
-#        tracemalloc.start(10)
-#import tracemalloc
-
     # We begin
     if args.verbose >= 1:
         print("\n["+str(time.time())+"] : BEGIN RUNNING",file=sys.stderr)
@@ -544,7 +581,6 @@ if __name__ == '__main__':
         vars(args)["output"],
         vars(args)["failed"],
         vars(args)["report"],
-       # args.memory_tracking,
         operations_array, 
         args.filter ,
         outputs_array,
