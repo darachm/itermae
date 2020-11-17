@@ -9,8 +9,8 @@ degeneracy and using the sequence, not just position, to parse reads.
 TODO THIS needs to be tested cleaned up, just skeletoning now
 
 1. You can clone this repo, or download just the `itermae.py` script and run it.
-    You'll need to install what's in `REQUIREMENTS`, so 
-    `python3 -m pip install REQUIREMENTS`.
+    You'll need to install what's in `requirements.txt`, so 
+    `python3 -m pip install -r requirements.txt` will do that.
 1. You can use [Singularity](syslab.org) to pull and run a 
     [Singularity image of itermae.py](), where everything is already installed.
     This is recommended.
