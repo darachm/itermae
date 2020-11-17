@@ -1,15 +1,11 @@
-import argparse
-import re
-import itertools
-import json
-import time
-import statistics
-import sys
-import gzip
-import string
-
-# Importing packages for the heart of it, fuzzy regex and SeqIO classes
-import regex
-from Bio import SeqIO
-from Bio import Seq, SeqRecord
-
+argparse
+re
+itertools
+json
+time
+statistics
+sys
+gzip
+string
+regex
+Bio
