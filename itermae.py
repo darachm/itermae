@@ -4,7 +4,6 @@
 import argparse
 import re
 import itertools
-import json
 import time
 import statistics
 import sys
