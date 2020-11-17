@@ -3,11 +3,10 @@
 import unittest
 
 from itermae import *
-from Bio import SeqIO, Seq, SeqRecord
-import gzip
-import io
+from Bio import SeqIO
 
 class TestItermae(unittest.TestCase):
+
     def setUp(self):
         self.input_fastq = "example-data/test.fastq"
 
@@ -73,19 +72,6 @@ class TestItermae(unittest.TestCase):
                 ('NB501157:100:H5J5LBGX2:1:11101:10000:19701_CTACT_GAG',
                     'GATGCACTGCGTTCCATGTT')
                 ])
-
-    def test_reader_fastq(self):
-#        with open(z,"rb"):
-#        reader(
-#            input_file=vars(args)["input"], is_gzipped=args.gzipped,
-#            operations_array=operations_array, filters=args.filter, 
-#            outputs_array=outputs_array,
-#            out_format=args.output_format,
-#            output_file=vars(args)["output"],failed_file=vars(args)["failed"],
-#            report_file=vars(args)["report"],
-#            verbosity=args.verbose
-#            )
-        pass
 
 if __name__ == '__main__':
     unittest.main()
