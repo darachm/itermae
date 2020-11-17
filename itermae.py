@@ -198,38 +198,33 @@ def reader(
 
     # Opening up output file handles, will hand them off to each chop 
     if output_file is "STDOUT":
-        output = sys.stdout
+        output_fh = sys.stdout
     # If you've specified a file, then that's here
     else:
-        output = open(output_file,"a")
+        output_fh = open(output_file,"a")
     # If no failed file specified, then we're just ignoring it
     if failed_file is None:
-        failed = None
+        failed_fh = None
     # But if specified, then it gets written
     else:
-        failed = open(failed_file,"a")
+        failed_fh = open(failed_file,"a")
     # Same for optional report
     if report_file is None:
-        report = None
+        report_fh = None
     else:
-        report = open(report_file,"a")
+        report_fh = open(report_file,"a")
 
-    # Making a dummyspacer thing and seq_holder, this gets copied for each
-    # chop function call, so it's where the internals can hold matches for
-    # subsequent group searches. Dummy spacer is for odd formatting outputs.
-    # Not very necessary now that I put it out as SAM...
-
-    ### Do the chop-ing
-
+    # Do the chop-ing...
     for each_seq in input_seqs:
         # Each sequence, one by one...
 
         chop(
-            SeqHolder(each_seq,verbosity=verbosity),  
-            operations_array, filters, outputs_array, # Things todo!
-            output, failed, report, # File handles
-            out_format, # Er... what format for output?
-            verbosity
+            seq_holder=SeqHolder(each_seq,verbosity=verbosity),  
+            operations_array=operations_array, filters=filters, 
+            outputs_array=outputs_array, 
+            out_format=out_format, 
+            output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
+            verbosity=verbosity
             )
 
     return(0)
@@ -238,47 +233,64 @@ def reader(
 def chop(
     seq_holder,
     operations_array, filters, outputs_array, 
-    output, failed, report,
     out_format,
+    output_fh, failed_fh, report_fh,
     verbosity
     ):
     """
     This one takes each record, applies the operations, evaluates the filters,
     generates outputs, and writes them to output handles as appropriate.
+    It's a bit messy, so I've tried to make it clear with comments to break it
+    up into sections.
     """
 
-    # Chop grained verbosity
+    # For chop grained verbosity, report
     if verbosity >= 2:
         print("\n["+str(time.time())+"] : starting to process : "+
             seq_holder.seqs['input'].id+"\n  "+seq_holder.seqs['input'].seq+"\n  "+ 
             str(seq_holder.seqs['input'].letter_annotations['phred_quality']),
             file=sys.stderr)
 
-    # This should fail if you didn't specify anything taking 
-    # from input stream!
+    # This should fail if you didn't specify anything taking from input stream!
     assert operations_array[0][0] == "input", (
         "can't find the sequence named `input`, rather we see `"+
         operations_array[0][0]+"` in the holder, so breaking. You should "+
         "have the first operation start with `input` as a source." )
 
+    #
+    #
+    # ITERATING THROUGH THE MATCHING
+    #
+    #
+
+    # First, apply each operation !
     for operation_number, operation in enumerate(operations_array):
 
         if operation_number > 26:
             print("Listen, here's the deal. I did not anticipate anyone would "+
                 "be trying more than a few operations, so the IDs are just "+
-                "one letter. So, use fewer operations, or rewrite it "+
-                "yourself around when it calls `enumerate(operations_array)`.",
+                "one letter. So, use <=26 operations, or rewrite it "+
+                "yourself around where it calls `enumerate(operations_array)`.",
                 file=sys.stderr)
+            exit(1)
 
         seq_holder.apply_operation( string.ascii_lowercase[operation_number],
                 operation[0],operation[1] )
 
-    # All these values allow use to apply filters, using this
-    # function
+    # Now seq_holder should have a lot of goodies, match scores and group stats
+    # and matched sequences groups.
+    # All these values allow us to apply filters :
+
+    #
+    #
+    # APPLYING FILTERS
+    #
+    #
 
     evaluated_filters = seq_holder.apply_filters(filters) 
 
-    # This evaluated_filters should be logical list. So did we pass all filters?
+    # This evaluated_filters should be boolean list. So did we pass all filters?
+    # If not then do this
     if not all(evaluated_filters):
 
         if verbosity >= 2:
@@ -287,26 +299,32 @@ def chop(
                 file=sys.stderr)
 
         # So if we should write this per-record report
-        if report is not None:
+        if report_fh is not None:
             print( seq_holder.format_report("FailedFilter",
                     seq_holder.seqs['input'].seq, evaluated_filters)
-                ,file=report)
+                ,file=report_fh)
 
-        if failed is not None:
-            SeqIO.write(seq_holder.seqs['input'], failed, "fastq")
+        if failed_fh is not None:
+            SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
 
         return 0
 
+    # Or if we passed all filters, then we try to form the outputs
     else:
 
-
+        #
+        #
+        # FORMING OUTPUTS
+        #
+        #
         try:
+
             # We attempt to form the correct output records
-
             output_records = [ seq_holder.build_output(i, j) for i, j in outputs_array ]
-            # So this will fail us out of the 'try' if it doesn't form
+            # So this will fail us out of the 'try' if it doesn't form.
+            # i is the output_arrays ID spec, and j is sequence spec.
 
-            # Otherwise, just the record and if it passed
+            # Format the output record as appropriate
             for which, output_record in enumerate(output_records):
                 if out_format == "sam":
                     print(
@@ -314,20 +332,24 @@ def chop(
                             output_record.id,
                             "0", "*", "0", "255", "*", "=", "0", "0", 
                             str(output_record.seq),
-                            ''.join([chr(i+33) for i in output_record.letter_annotations['phred_quality']]),
+                            ''.join([chr(i+33) for i in 
+                                    output_record.letter_annotations['phred_quality']]
+                                    ),
                             "XI:"+str(which)
                             ])
-                        ,file=output)
+                        ,file=output_fh)
                 elif out_format == "fastq":
                     SeqIO.write(output_record, output, "fastq") 
                 else:
-                    print("I don't "+out_format+" format, looping over here") 
+                    print("I don't know '"+out_format+"' format, "+
+                        "exiting over that.") 
+                    exit(1)
 
                 # If we want to write the report, we make it
-                if report is not None:
+                if report_fh is not None:
                     print( seq_holder.format_report("Passed",
                             output_record.seq, evaluated_filters)
-                        ,file=report)
+                        ,file=report_fh)
 
             if verbosity >= 2:
                 print("\n["+str(time.time())+"] : evaluated the "+
@@ -336,6 +358,11 @@ def chop(
 
             return 0
 
+        #
+        #
+        # FAILED FORMATTING FAILS
+        #
+        #
         except:
 
             if verbosity >= 2:
@@ -343,11 +370,11 @@ def chop(
                     "output.", file=sys.stderr)
 
             # If we want to write the report, we make it
-            if report is not None:
+            if report_fh is not None:
                 print( 
                     seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
                         seq_holder.seqs['input'].seq, evaluated_filters)
-                    ,file=report)
+                    ,file=report_fh)
 
             if failed is not None:
                 SeqIO.write(input_record, failed, "fastq")
