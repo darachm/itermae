@@ -375,7 +375,7 @@ def chop(
                         seq_holder.seqs['input'].seq, evaluated_filters)
                     ,file=report_fh)
 
-            if failed is not None:
+            if failed_fh is not None:
                 SeqIO.write(input_record, failed, "fastq")
 
             return 0
@@ -465,7 +465,7 @@ if __name__ == '__main__':
             "You're welcome. Also, `statistics` package is loaded, so you "+
             "can use those expressions for means, medians, etc.")
     # Outputs
-    parser.add_argument("--output-id",action="append",
+    parser.add_argument("--output-id","-oid",action="append",
         help="A list of output ID definitions, in the same order as for "+
             "output-seq (see that one, below probably). This is evaluated for "+
             "reads that pass filter. You can access 'input.id' to get the "+
@@ -473,7 +473,7 @@ if __name__ == '__main__':
             "particular group, so for example you could do "+
             "'input.id+\"_\"+index.seq' to append the index sequence to the "+
             "FASTQ ID. Unlike output-seq, this a string not a Sequence object.")
-    parser.add_argument("--output-seq",action="append",
+    parser.add_argument("--output-seq","-oseq",action="append",
         help="A list of output seq definitions, in the same order as for "+
             "output-ids. This is evaluated on the groups being Biopython "+
             "SeqRecords, so you you can paste them together like "+
@@ -610,7 +610,9 @@ if __name__ == '__main__':
         verbosity=args.verbose
         )
 
-    print("\n"+"["+str(time.time())+"]"+" : "+
-        "All worked 'till the work is done --- or some fatal error.",file=sys.stderr)
+    if args.verbose >= 1:
+        print("\n"+"["+str(time.time())+"]"+" : "+
+            "All worked 'till the work is done --- or some fatal error.",
+            file=sys.stderr)
 
     exit(0)
