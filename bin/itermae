@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import argparse
+import re
+import sys
 
 # Using argparse module to define the arguments
 
