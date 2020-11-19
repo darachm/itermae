@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+import itermae
+
 import argparse
 import re
 import sys
+import regex
+import time
 
 # Using argparse module to define the arguments
 
@@ -112,14 +116,14 @@ try:
     for each in args.operation:
         if each.find("<dummyspacer>") > 0:
             print("Hey, you can't name a capture group "+
-                "'dummyspacer', I'm using that! Pick a different name."
-                ,file=sys.stderr)
+                "'dummyspacer', I'm using that! Pick a different name.",
+                file=sys.stderr)
             exit(1)
 
         if each.find("<input>") > 0:
             print("Hey, you can't name a capture group "+
-                "'input', I'm using that! Pick a different name."
-                ,file=sys.stderr)
+                "'input', I'm using that! Pick a different name.",
+                file=sys.stderr)
             exit(1)
         # Here, we use the ` > ` to specify the flow of input to
         # the regex
@@ -158,8 +162,8 @@ if args.verbose >= 1:
         "alignment:\n",file=sys.stderr)
     for each in operations_array:
         print("  - from : "+each[0]+"\n"+
-            "    extract groups with regex : '"+str(each[1])
-            ,file=sys.stderr)
+            "    extract groups with regex : '"+str(each[1]),
+            file=sys.stderr)
 
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : ...and with these filters:\n",
@@ -217,7 +221,7 @@ if args.verbose >= 1:
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : BEGIN RUNNING",file=sys.stderr)
 
-reader(
+itermae.reader(
     input_file=vars(args)["input"], is_gzipped=args.gzipped,
     operations_array=operations_array, filters=args.filter, 
     outputs_array=outputs_array,
