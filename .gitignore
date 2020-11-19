@@ -1,2 +1,4 @@
-tmp/
-slapchop.singularity
+*.singularity
+*.pyc
+
+/dist/
