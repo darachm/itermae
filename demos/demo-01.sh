@@ -20,8 +20,8 @@ AAAAAEEEE/AEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 EOF
 )
 
-echo "${input_fastq}" | 
-    ./itermae.py -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
+echo "${input_fastq}" | \
+    itermae -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
         -oid "input.id+'_'+sample.seq" -oseq "after"
 
 # This should output two SAM-format entries, putting the first five bases in the

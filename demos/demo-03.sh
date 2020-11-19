@@ -22,7 +22,7 @@ EOF
 )
 
 echo "${input_fastq}" | 
-    ./itermae.py \
+    itermae \
         --operation "input > (?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=1}(?P<rest>TCT.*){e<=1}" \
         --operation "rest > (?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})CGTACGC" \
         --operation "rest > (?P<fixed2>CGTACGCTGCAGGTC)(?<UMItail>GAC[ATCG]G[ATCG]A[ATCG]G[ATCG]G[ATCG]G[ATCG]GAT){s<=2}" \

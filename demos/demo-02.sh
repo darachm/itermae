@@ -18,21 +18,21 @@ EOF
 echo
 echo "With level 1 verbosity"
 echo "${input_fastq}" | 
-    ./itermae.py -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
+    itermae -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
         -oid "input.id+'_'+sample.seq" -oseq "after" \
         -v
 
 echo
 echo "With level 2 verbosity"
 echo "${input_fastq}" | 
-    ./itermae.py -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
+    itermae -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
         -oid "input.id+'_'+sample.seq" -oseq "after" \
         -v --verbose
 
 echo
 echo "With level 3 verbosity"
 echo "${input_fastq}" | 
-    ./itermae.py -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
+    itermae -o "input > (?P<sample>[ATCGN]{5})(?P<after>[ATCGN]{10})" \
         -oid "input.id+'_'+sample.seq" -oseq "after" \
         -v -v -v
 
