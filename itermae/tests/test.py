@@ -2,7 +2,9 @@
 
 import unittest
 
-from itermae import *
+import itermae
+
+import regex
 from Bio import SeqIO
 
 class TestItermae(unittest.TestCase):
@@ -11,14 +13,14 @@ class TestItermae(unittest.TestCase):
         self.input_fastq = "example-data/test.fastq"
 
     def test_MatchScores(self):
-        this = MatchScores(1,2,3)
+        this = itermae.MatchScores(1,2,3)
         self.assertEqual(this.substitutions,1)
         self.assertEqual(this.insertions,2)
         self.assertEqual(this.deletions,3)
         self.assertEqual(this.flatten(),"1_2_3")
 
     def test_GroupStats(self):
-        this = GroupStats(5,15)
+        this = itermae.GroupStats(5,15)
         self.assertEqual(this.start,5)
         self.assertEqual(this.end,15)
         self.assertEqual(this.length,10)
@@ -27,7 +29,7 @@ class TestItermae(unittest.TestCase):
     def test_SeqHolder_initial(self):
         input_seqs = SeqIO.parse(self.input_fastq,"fastq")
         for i in input_seqs:
-            this = SeqHolder(i,verbosity=3)
+            this = itermae.SeqHolder(i,verbosity=3)
             self.assertEqual(this.verbosity,3)
             self.assertDictEqual(this.match_scores,{})
             self.assertDictEqual(this.group_stats,{})
@@ -40,7 +42,7 @@ class TestItermae(unittest.TestCase):
         outputs = []
         reports = []
         for i in input_seqs:
-            this = SeqHolder(i,verbosity=0)
+            this = itermae.SeqHolder(i,verbosity=0)
             this.apply_operation('a','input',
                 regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
                     regex.BESTMATCH) )

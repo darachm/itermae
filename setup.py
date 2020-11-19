@@ -20,6 +20,7 @@ setuptools.setup(
         'biopython',
         ],
     scripts=['bin/itermae'],
+    test_suite='itermae.tests',
     zip_safe=False,
     python_requires='>=3.6'
     )
