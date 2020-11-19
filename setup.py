@@ -9,5 +9,10 @@ setuptools.setup(
     author_email='darachm@stanford.edu',
     license='GPL',
     packages=['itermae'],
+    install_requires=[
+        'regex',
+        'biopython'
+        ],
+    scripts=['bin/itermae'],
     zip_safe=False
     )
