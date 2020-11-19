@@ -8,6 +8,9 @@ run-demos: $(demos)
 	echo $^ | xargs bash
 	
 
+dist_pkg:
+	python3 setup.py sdist bdist_wheel
+
 #example: tmp/barseq_shortrun_pass.fastq tmp/barseq_longrun_pass.fastq
 
 #container_test: tmp/barseq_shortrun_pass_container.fastq tmp/barseq_longrun_pass_container.fastq
