@@ -4,7 +4,7 @@ with open('README.md','r') as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='itermae-darachm',
+    name='itermae',
     version='0.4.0',
     author='Darach Miller',
     description='Commandline tool for parsing NGS reads by multiple fuzzy '+
@@ -22,5 +22,13 @@ setuptools.setup(
     scripts=['bin/itermae'],
     test_suite='itermae.tests',
     zip_safe=False,
-    python_requires='>=3.6'
+    python_requires='>=3.6',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Scientific/Engineering :: Bio-Informatics',
+        'Programming Language :: Python :: 3',
+        '',
+        ],
+    keywords='fastq regex fuzzy amplicon parser barcode extractor extracter'
     )
