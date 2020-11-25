@@ -6,6 +6,9 @@ import statistics
 import sys
 import gzip
 import string
+import argparse
+import re
+import itertools
 
 # Importing packages for the heart of it, fuzzy regex and SeqIO classes
 import regex
@@ -335,7 +338,7 @@ def chop(
                             ])
                         ,file=output_fh)
                 elif out_format == "fastq":
-                    SeqIO.write(output_record, output, "fastq") 
+                    SeqIO.write(output_record, output_fh, "fastq") 
                 else:
                     print("I don't know '"+out_format+"' format, "+
                         "exiting over that.") 
@@ -373,7 +376,7 @@ def chop(
                     ,file=report_fh)
 
             if failed_fh is not None:
-                SeqIO.write(input_record, failed, "fastq")
+                SeqIO.write(input_record, failed_fh, "fastq")
 
             return 0
 
