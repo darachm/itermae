@@ -145,9 +145,14 @@ except:
 # Next we build the array of outputs, by combining the named output IDs
 # and seq specifications.
 try:
-    for each_id, each_seq in zip(args.output_id, args.output_seq):
-        # append that to the outputs array
-        outputs_array.append( [each_id, each_seq] )
+    # We need output sequences, so we go through that list, by index
+    for i in range(len(args.output_seq)):
+        if args.output_id is None:
+            # or, use the default of input ID
+            outputs_array.append( ["input.id", args.output_seq[i]] )
+        else:
+            # append that to the outputs array
+            outputs_array.append( [args.output_id[i], args.output_seq[i]] )
 except:
     # Failure likely from lack of operations to do
     print("Wait a second, I don't understand the outputs to be done! "+
