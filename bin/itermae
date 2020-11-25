@@ -225,7 +225,7 @@ itermae.reader(
     input_file=vars(args)["input"], is_gzipped=args.gzipped,
     operations_array=operations_array, filters=args.filter, 
     outputs_array=outputs_array,
-    out_format=args.output_format,
+    out_format=args.output_format.upper(),
     output_file=vars(args)["output"],failed_file=vars(args)["failed"],
     report_file=vars(args)["report"],
     verbosity=args.verbose

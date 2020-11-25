@@ -325,7 +325,7 @@ def chop(
 
             # Format the output record as appropriate
             for which, output_record in enumerate(output_records):
-                if out_format == "sam":
+                if out_format == "SAM":
                     print(
                         "\t".join([
                             output_record.id,
@@ -337,11 +337,13 @@ def chop(
                             "XI:"+str(which)
                             ])
                         ,file=output_fh)
-                elif out_format == "fastq":
+                elif out_format == "FASTQ":
                     SeqIO.write(output_record, output_fh, "fastq") 
+                elif out_format == "FASTA":
+                    SeqIO.write(output_record, output_fh, "fasta") 
                 else:
                     print("I don't know '"+out_format+"' format, "+
-                        "exiting over that.") 
+                        "exiting over that. I know SAM, FASTQ, and FASTA.") 
                     exit(1)
 
                 # If we want to write the report, we make it
