@@ -9,6 +9,7 @@ import string
 import argparse
 import re
 import itertools
+import copy
 
 # Importing packages for the heart of it, fuzzy regex and SeqIO classes
 import regex
@@ -122,17 +123,28 @@ class SeqHolder:
         thinking about security at all.
         """
 
-        env_thing = { **self.group_stats , **self.match_scores }
+        env_thing_stats = { **self.group_stats , **self.match_scores }
+        env_thing_seqs = { **self.seqs }
 
         return_object = []
         try:
-            for each_filter in filters:
+            for i in range(len(filters)):
                 # Here we evaluate them but using that dictionary as the
                 # global dictionary, because done is better than dogma.
-                if eval(each_filter,globals(),env_thing):
-                    return_object.append(True)
-                else:
-                    return([False])
+                try:
+                    if eval(filters[i],globals(),env_thing_stats):
+                        return_object[i] = True
+                    else:
+                        return([False])
+                except:
+                    pass
+                try:
+                    if eval(filters[i],globals(),env_thing_seqs):
+                        return_object[i] = True
+                    else:
+                        return([False])
+                except:
+                    pass
         except:
             return([False])
 
@@ -150,7 +162,7 @@ class SeqHolder:
         out_seq = eval(output_seq_def,globals(),env_thing)
         out_seq.id = str(eval(output_id_def,globals(),env_thing))
 
-        return out_seq
+        return copy.deepcopy(out_seq)
 
     def format_report(self,label,output_seq,evaluated_filters):
         """
