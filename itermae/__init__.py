@@ -382,7 +382,7 @@ def chop(
                     ,file=report_fh)
 
             if failed_fh is not None:
-                SeqIO.write(input_record, failed_fh, "fastq")
+                SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
 
             return 0
 
