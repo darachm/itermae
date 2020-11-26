@@ -1,5 +1,5 @@
 
-.PHONY: container run-demos clean dist-pkg dist-files upload-pypi
+.PHONY: container run-demos clean dist-pkg dist-files upload-pypi upload-testpypi
 
 demo: demo/demos_and_tutorial_itermae.html
 
@@ -21,8 +21,10 @@ dist-files: $(pkg-files)
 	python3 setup.py sdist bdist_wheel
 
 upload-pypi: dist-files
-	python3 -m twine upload --repository testpypi dist/*
+	python3 -m twine upload --repository pypi dist/*
 
+upload-testpypi: dist-files
+	python3 -m twine upload --repository testpypi dist/*
 
 
 itermae.singularity: Singularity
