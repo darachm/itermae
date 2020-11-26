@@ -1,5 +1,5 @@
 
-.PHONY: container run-demos clean dist-pkg upload-pypi
+.PHONY: container run-demos clean dist-pkg dist-files upload-pypi
 
 demo: demo/demos_and_tutorial_itermae.html
 
@@ -15,14 +15,13 @@ clean:
 	rm demo/report.csv || echo ""
 
 pkg-files=setup.py bin/itermae itermae/__init__.py
-dist-files=dist/itermae-0.4.0-py3-none-any.whl dist/itermae-0.4.0.tar.gz
 
-dist-pkg: $(dist-files)
-$(dist-files): $(pkg-files)
+dist-files: $(pkg-files)
+	rm dist/* || echo""
 	python3 setup.py sdist bdist_wheel
 
-upload-pypi: $(dist-files)
-	python3 -m twine upload --repository testpypi $^
+upload-pypi: dist-files
+	python3 -m twine upload --repository testpypi dist/*
 
 
 
