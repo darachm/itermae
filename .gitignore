@@ -1,6 +1,11 @@
 *.singularity
 *.pyc
+*.ipynb_checkpoints
 
 /dist/
 /build/
 /docs/build
+
+/demo/report.csv
+/demo/failed.fastq
+/demo/out.sam
