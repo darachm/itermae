@@ -36,10 +36,11 @@ class GroupStats:
     This just makes an object to hold these three where they're easy to type
     (as attributes not keyed dict). Well, and a flatten function for printing.
     """
-    def __init__(self, start, end):
+    def __init__(self, start, end, quality):
         self.start = start 
         self.end = end 
         self.length = self.end - self.start
+        self.quality = quality
     def flatten(self):
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
@@ -107,7 +108,10 @@ class SeqHolder:
                 # description and gets unpacked on forming outputs
 
                 # Then we record the start, end, and length of the matched span
-                self.group_stats[match_name] = GroupStats(*fuzzy_match.span(match_name))
+                self.group_stats[match_name] = \
+                    GroupStats(*fuzzy_match.span(match_name),
+                        quality=self.seqs[match_name].letter_annotations['phred_quality']
+                        )
 
         except:
             self.match_scores[match_id] = MatchScores(None,None,None)
