@@ -26,8 +26,9 @@ Options:
     `python3 -m pip install -r requirements.txt` will install those.
     But if you're not using pip anyways, then you... do you.
 
-1. You can use [Singularity](syslab.org) to pull and run a 
-    [Singularity image of itermae.py](), where everything is already installed.
+1. You can use [Singularity](https://syslab.org) to pull and run a 
+    [Singularity image of itermae.py](https://singularity-hub.org/collections/4537), 
+    where everything is already installed.
     This is the recommended usage. This image is built with a few other tools,
     like gawk, perl, and parallel, to make command line munging easier.
 
