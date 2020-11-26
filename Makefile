@@ -1,23 +1,32 @@
 
-.PHONY: container run-demos clean
+.PHONY: container run-demos clean dist-pkg dist-files upload-pypi upload-testpypi
 
-demos=$(wildcard demos/*sh)
+demo: demo/demos_and_tutorial_itermae.html
 
-run-demos: $(demos)
-	mkdir -p demos/tmp
-	echo $^ | xargs bash
-	
+%.html : %.ipynb
+	jupyter nbconvert --to=html --ExecutePreprocessor.timeout=-1 \
+		--ExecutePreprocessor.allow_errors=True \
+		--execute $<
 
-#example: tmp/barseq_shortrun_pass.fastq tmp/barseq_longrun_pass.fastq
-
-#container_test: tmp/barseq_shortrun_pass_container.fastq tmp/barseq_longrun_pass_container.fastq
-
+# This is to clean up after the demo
 clean: 
-	rm -r tmp || echo ""
-	rm -r .nextflow* || echo ""
-	rm -r nextflow* || echo ""
-	rm -r work || echo ""
-	
+	rm demo/failed.fastq || echo ""
+	rm demo/out.sam || echo ""
+	rm demo/report.csv || echo ""
+
+pkg-files=setup.py bin/itermae itermae/__init__.py
+
+dist-files: $(pkg-files)
+	rm dist/* || echo""
+	python3 setup.py sdist bdist_wheel
+
+upload-pypi: dist-files
+	python3 -m twine upload --repository pypi dist/*
+
+upload-testpypi: dist-files
+	python3 -m twine upload --repository testpypi dist/*
+
+
 itermae.singularity: Singularity
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<

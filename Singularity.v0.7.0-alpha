@@ -1,0 +1,44 @@
+Bootstrap: docker
+From: ubuntu:16.04
+#Bootstrap: localimage
+#From: ../ubuntu-1804-updated_container/ubuntu.simg
+
+%labels
+MAINTAINER darachm
+
+%help
+
+    This container is for running the `itermae` package, as pulled from pip.
+    Thus, it has that package and a few other tools useful in a command line
+    around itermae.
+    
+    For options, do:
+
+        singularity exec this-container-name itermae -h
+
+    See the git repo for a ipynb/jupyter notebook with demos with the lone
+    package as installed local, and you can extrapolate to Singularity...
+
+%post
+
+    export DEBIAN_FRONTEND="noninteractive"
+
+    apt -y update
+    apt -y install apt-utils software-properties-common language-pack-en
+    update-locale
+
+    apt -y install python3 python3-pip
+    apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev parallel gawk perl 
+    python3 -m pip install itermae
+
+    parallel --citation || echo "why is this a return value of 1"
+
+%test
+
+    itermae -h | parallel echo | gawk '{print $0}' | sort
+    echo "The above should be the help for itermae but scrambled to 
+        test that tools are working and citations are turned off on
+        parallel"
+    
+
+
