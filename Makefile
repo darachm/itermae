@@ -27,7 +27,7 @@ upload-testpypi: dist-files
 	python3 -m twine upload --repository testpypi dist/*
 
 
-itermae.singularity: Singularity
+itermae.singularity: Singularity*
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<
 
