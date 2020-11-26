@@ -100,7 +100,11 @@ class SeqHolder:
                 # the matched # span of this matching group. So, extract.
                 self.seqs[match_name] = \
                     self.seqs[input_group][slice(*fuzzy_match.span(match_name))]
-    
+
+                self.seqs[match_name].description = "" 
+                # This is to fix a bug where the ID is stuck into the 
+                # description and gets unpacked on forming outputs
+
                 # Then we record the start, end, and length of the matched span
                 self.group_stats[match_name] = GroupStats(*fuzzy_match.span(match_name))
 
