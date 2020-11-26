@@ -15,13 +15,16 @@ clean:
 	rm demo/report.csv || echo ""
 
 pkg-files=setup.py bin/itermae itermae/__init__.py
-dist-fils=itermae-0.4.0-py3-none-any.whl  itermae-0.4.0.tar.gz
+dist-files=dist/itermae-0.4.0-py3-none-any.whl dist/itermae-0.4.0.tar.gz
 
-$dist-files: $pkg-files
+dist-pkg: $(dist-files)
+$(dist-files): $(pkg-files)
 	python3 setup.py sdist bdist_wheel
 
-upload-pypi: $dist-files
-	python3 -m twine upload --repository pypi $^
+upload-pypi: $(dist-files)
+	python3 -m twine upload --repository testpypi $^
+
+
 
 itermae.singularity: Singularity
 	sudo rm -r $@ || echo "already gone"
