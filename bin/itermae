@@ -150,8 +150,8 @@ try:
         if args.output_id is None:
             # or, use the default of input ID
             outputs_array.append( [
-                    compile("input.id",'<string>','eval'), 
-                    compile(args.output_seq[i],'<string>','eval') 
+                    compile("input.id",'<string>','eval',optimize=2), 
+                    compile(args.output_seq[i],'<string>','eval',optimize=2) 
                     ])
         else:
             # append that to the outputs array
@@ -193,10 +193,14 @@ if args.verbose >= 1:
         print("  - With ID of : "+each[0]+"\n"+
             "    and the sequence is the group(s) : "+each[1],file=sys.stderr)
 
+filter_array = []
 # If it's omitted, we believe that means no filter, and we make it True
 # because it gets `eval`'d in the function. 
-if args.filter is None:
-    args.filter = ["True == True"]
+try:
+    for i in args.filter:
+        filter_array.append( compile(i,'<string>','eval',optimize=2) )
+except:
+    filter_array.append( compile('True','<string>','eval',optimize=2) )
 
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : Then, I'm going to write out a "+
@@ -234,7 +238,7 @@ if args.verbose >= 1:
 
 itermae.reader(
     input_file=vars(args)["input"], is_gzipped=args.gzipped,
-    operations_array=operations_array, filters=args.filter, 
+    operations_array=operations_array, filters=filter_array, 
     outputs_array=outputs_array,
     out_format=args.output_format.upper(),
     output_file=vars(args)["output"],failed_file=vars(args)["failed"],
