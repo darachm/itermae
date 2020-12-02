@@ -163,10 +163,12 @@ class SeqHolder:
         """
 
         env_thing = { **self.seqs }
+
+        out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
         out_seq = eval(output_seq_def,globals(),env_thing)
         out_seq.id = str(eval(output_id_def,globals(),env_thing))
 
-        return copy.deepcopy(out_seq)
+        return out_seq
 
     def format_report(self,label,output_seq,evaluated_filters):
         """
