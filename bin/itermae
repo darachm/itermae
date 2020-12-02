@@ -149,10 +149,16 @@ try:
     for i in range(len(args.output_seq)):
         if args.output_id is None:
             # or, use the default of input ID
-            outputs_array.append( ["input.id", args.output_seq[i]] )
+            outputs_array.append( [
+                    compile("input.id",'<string>','eval'), 
+                    compile(args.output_seq[i],'<string>','eval') 
+                    ])
         else:
             # append that to the outputs array
-            outputs_array.append( [args.output_id[i], args.output_seq[i]] )
+            outputs_array.append( [
+                    compile(args.output_id[i],'<string>','eval'), 
+                    compile(args.output_seq[i],'<string>','eval') 
+                    ])
 except:
     # Failure likely from lack of operations to do
     print("Wait a second, I don't understand the outputs to be done! "+
