@@ -127,30 +127,24 @@ class SeqHolder:
         thinking about security at all.
         """
 
-        env_thing_stats = { **self.group_stats , **self.match_scores }
-        env_thing_seqs = { **self.seqs }
+        env_thing = { **self.group_stats , **self.match_scores }
+        for i in self.seqs:
+            if i in env_thing.keys():
+                env_thing[i].seq = self.seqs[i].seq
 
         return_object = []
         try:
             for i in range(len(filters)):
+                return_object.append(False)
                 # Here we evaluate them but using that dictionary as the
                 # global dictionary, because done is better than dogma.
                 try:
-                    if eval(filters[i],globals(),env_thing_stats):
+                    if eval(filters[i],globals(),env_thing):
                         return_object[i] = True
-                    else:
-                        return([False])
                 except:
-                    pass
-                try:
-                    if eval(filters[i],globals(),env_thing_seqs):
-                        return_object[i] = True
-                    else:
-                        return([False])
-                except:
-                    pass
+                    return_object[i] = False
         except:
-            return([False])
+            return_object.append(False)
 
         return return_object
 
