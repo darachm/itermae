@@ -5,7 +5,7 @@ with open('README.md','r') as fh:
 
 setuptools.setup(
     name='itermae',
-    version='0.4.0',
+    version='0.4.01',
     author='Darach Miller',
     description='Commandline tool for parsing NGS reads by multiple fuzzy '+
         'regex operations',
@@ -20,7 +20,8 @@ setuptools.setup(
         'biopython',
         ],
     scripts=['bin/itermae'],
-    test_suite='itermae.tests',
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
     zip_safe=False,
     python_requires='>=3.6',
     classifiers=[
@@ -28,7 +29,6 @@ setuptools.setup(
         'Intended Audience :: Developers',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Programming Language :: Python :: 3',
-        '',
         ],
     keywords='fastq regex fuzzy amplicon parser barcode extractor extracter'
     )
