@@ -29,7 +29,7 @@ upload-testpypi: dist-files
 
 # This is for running a few examples on a lot of reads, for profiling
 profiler-runs:
-	bash demo/profiler_runs.sh
+	bash profiling_tests/profiler_runs.sh
 
 itermae.singularity: Singularity*
 	sudo rm -r $@ || echo "already gone"

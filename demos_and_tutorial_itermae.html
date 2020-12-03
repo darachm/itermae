@@ -13103,6 +13103,27 @@ time to do so.</p>
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Install">Install<a class="anchor-link" href="#Install">&#182;</a></h2><p>First install it, of course. Here it's commented out so that jupyter won't.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-bash"><pre><span></span><span class="c1"># python3 -m pip install itermae</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Usage">Usage<a class="anchor-link" href="#Usage">&#182;</a></h2><p><code>itermae</code> expects to have a FASTQ file piped into the standard input (STDIN) of the program, 
 likely using the <code>|</code> character. If then applies one or more operations (denoted by <code>-o</code> or <code>--operation</code>) 
 to each read. For each read where the operation was successful, it generates an output sequence record 
@@ -13116,10 +13137,10 @@ The output format is by default a SAM file.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; .&quot;</span> -oseq <span class="s2">&quot;input&quot;</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; .&quot;</span> -oseq <span class="s2">&quot;input&quot;</span>
 </pre></div>
 
     </div>
@@ -13163,10 +13184,10 @@ ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008	0	*	0	255	*	=	0	0	ACGTAGTC
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; &quot;</span> -oseq <span class="s2">&quot;input&quot;</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; &quot;</span> -oseq <span class="s2">&quot;input&quot;</span>
 </pre></div>
 
     </div>
@@ -13214,10 +13235,10 @@ here FASTA is a little easier to stare at than SAM (FASTA is simpler). For examp
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; .&quot;</span> -oseq <span class="s2">&quot;input&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; .&quot;</span> -oseq <span class="s2">&quot;input&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
 </pre></div>
 
     </div>
@@ -13311,10 +13332,10 @@ other operation patterns against <em>just that group</em>.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; GGTCTCT(?P&lt;barcode&gt;[ATCGN]{18,22})CGTACG&quot;</span> -oseq <span class="s2">&quot;barcode&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
 </pre></div>
 
@@ -13383,10 +13404,10 @@ tolerate one or fewer errors in the <code>GGTCTCT</code> just in front of the ba
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; (GGTCTCT){e&lt;=1}(?P&lt;barcode&gt;[ATCGN]{18,22})CGTACG&quot;</span> -oseq <span class="s2">&quot;barcode&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
 </pre></div>
 
@@ -13435,10 +13456,10 @@ group as <code>fixed</code> and output that.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; (?P&lt;fixed&gt;GGTCTCT){e&lt;=1}(?P&lt;barcode&gt;[ATCGN]{18,22})&quot;</span> -oseq <span class="s2">&quot;fixed&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
 </pre></div>
 
@@ -13490,10 +13511,10 @@ And the below also puts a <code>+'_'+</code> between them for readability.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae -o <span class="s2">&quot;input &gt; (?P&lt;fixed&gt;GGTCTCT){e&lt;=1}(?P&lt;barcode&gt;[ATCGN]{18,22})&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+fixed.seq&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
 </pre></div>
@@ -13544,10 +13565,10 @@ the barcode, while fuzzy matching the priming sites.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
@@ -13610,10 +13631,10 @@ that start on base 20 and are exactly 20 bases long
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;fasta&quot;</span> <span class="se">\</span>
@@ -13654,13 +13675,19 @@ CACACGCACGAATTTGCATA
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>A more useful example would be filtering on quality. Those are accessible by accessing the
-<code>.quality</code> attribute of the sequence in question. You can also access other attributes of each group, it's
-available as a BioPython SeqRecord, where the group name is the name of the SeqRecord variable.
-( Internally, both this and a separate object with <code>start</code>, <code>end</code>, <code>length</code>, and <code>quality</code> are made
-  available to evaluate to True for the filter, if that makes sense). See <code>apply_filter()</code> function for details.</p>
-<p>To make this easier, the <code>statistics</code> package is loaded. So you can do things like filtering on
-<code>min(barcode.quality) &gt;= 33</code> or <code>statistics.median(barcode.quality) &gt; 34 and barcode.length &gt;= 16</code>.
-For debugging, you can always do something like <code>print(statistics.median(barcode.quality))</code>
+<code>.quality</code> attribute of the sequence in question.</p>
+<p>You can also access other attributes of each group using
+that name (the group name).
+( Internally, this references an object with attributes of <code>start</code>, <code>end</code>,
+<code>length</code>, <code>quality</code>, and <code>seq</code>.)
+You can use these together in filters. You can't filter on the raw <code>input</code>,
+(or on <code>dummyspacer</code> for that matter).
+See <code>apply_filter()</code> function in the <code>__init__.py</code> file for details.</p>
+<p>To make building these easier, the <code>statistics</code> package is loaded. 
+So you can do things like filtering on
+<code>min(barcode.quality) &gt;= 33</code> or <code>statistics.median(barcode.quality) &gt; 34 and barcode.length &gt;= 16</code>.</p>
+<p>For debugging, you can print the thing you're filtering and see that spit
+out. So something like <code>print(statistics.median(barcode.quality))</code>
 (this is using <code>eval</code> directly by the way, so be responsible).</p>
 
 </div>
@@ -13668,10 +13695,10 @@ For debugging, you can always do something like <code>print(statistics.median(ba
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;fastq&quot;</span> <span class="se">\</span>
@@ -13715,17 +13742,18 @@ You can then write that to a file by using the <code>&gt;</code> operator in the
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
-        -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;sam&quot;</span> <span class="se">\</span>
+        -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;fastq&quot;</span> <span class="se">\</span>
         --filter <span class="s2">&quot;statistics.median(barcode.quality) &gt;= 34 and min(barcode.quality) &lt; 36&quot;</span>
-    &gt; out.sam
+    &gt; out.fastq
 
-head -n <span class="m">4</span> out.sam
+head -n <span class="m">4</span> out.fastq
+rm out.fastq
 </pre></div>
 
     </div>
@@ -13742,7 +13770,10 @@ head -n <span class="m">4</span> out.sam
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008_ACGTA	0	*	0	255	*	=	0	0	CACACGCACGAATTTGCATA	EEEAEEEEEEEEEEEEAEEE	XI:0
+<pre>@ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008_ACGTA
+CACACGCACGAATTTGCATA
++
+EEEAEEEEEEEEEEEEAEEE
 </pre>
 </div>
 </div>
@@ -13784,20 +13815,25 @@ of reporting to individual reads and individual operations.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGC){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+&#39;_&#39;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;sam&quot;</span> <span class="se">\</span>
         --report report.csv --failed failed.fastq -v <span class="se">\</span>
     &gt; out.sam
 
+head out.sam
+rm out.sam
+
 <span class="nb">echo</span> <span class="s2">&quot;The report:&quot;</span>
 head -n <span class="m">4</span> report.csv
+rm report.csv
 <span class="nb">echo</span>
 <span class="nb">echo</span> <span class="s2">&quot;The first of the failed reads:&quot;</span>
 head -n <span class="m">4</span> failed.fastq
+rm failed.fastq
 </pre></div>
 
     </div>
@@ -13815,32 +13851,38 @@ head -n <span class="m">4</span> failed.fastq
 
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>
-[1606368918.6706235] : I&#39;m reading in something, applying these operations of alignment:
+[1607034509.5937986] : I&#39;m reading in something, applying these operations of alignment:
 
   - from : input
     extract groups with regex : &#39;regex.Regex(&#39;(?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGC){e&lt;=1}&#39;, flags=regex.B | regex.V0)
 
-[1606368918.6706748] : ...and with these filters:
+[1607034509.5938544] : ...and with these filters:
 
   ( no filters defined )
 
-[1606368918.6706965] : Then I&#39;m going to construct outputs that look like:
+[1607034509.5938706] : Then I&#39;m going to construct outputs that look like:
 
   - With ID of : input.id+&#39;_&#39;+sampleIndex.seq
     and the sequence is the group(s) : barcode
 
-[1606368918.6707122] : Then, I&#39;m going to write out a sam format file to STDOUT
+[1607034509.5939014] : Then, I&#39;m going to write out a sam format file to STDOUT
 
-[1606368918.6707215] : and a report to &#39;report.csv.
+[1607034509.5939105] : and a report to &#39;report.csv.
 
-[1606368918.6707342] : BEGIN RUNNING
+[1607034509.59392] : BEGIN RUNNING
 
-[1606368918.6793184] : All worked &#39;till the work is done --- or some fatal error.
+[1607034509.6017349] : All worked &#39;till the work is done --- or some fatal error.
+ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000_TTCAC	0	*	0	255	*	=	0	0	TCAGTCGTAGCAGTTCGATG	EEEEEEEEEEEEEEEEEEEE	XI:0
+ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001_GCTTC	0	*	0	255	*	=	0	0	TGGCAGACACACGCTACA	EEEEEEEEEEEEEEEEEE	XI:0
+ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003_CTACT	0	*	0	255	*	=	0	0	GATGCACTGCGTTCCATGTT	EEEEEEEEEEEEEEEEEEEE	XI:0
+ExampleToyReads:1:exampleFlowCell:1:10000:10006:10006_TCGGC	0	*	0	255	*	=	0	0	ATTCTGAGCGGTGCCATAGT	EEEEEEEEEEEEEEEEEEEE	XI:0
+ExampleToyReads:1:exampleFlowCell:1:10000:10007:10007_AGGAG	0	*	0	255	*	=	0	0	ATAAGTTAGACAGGTCAGC	EEEEEEEEEEEEEEEEEEE	XI:0
+ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008_ACGTA	0	*	0	255	*	=	0	0	CACACGCACGAATTTGCATA	EEEAEEEEEEEEEEEEAEEE	XI:0
 The report:
-&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000&#34;,&#34;TTCACGTCCTCGAGGTCTCTTCAGTCGTAGCAGTTCGATGCGTACGCTACAGGTCGACGGTAAGAGAGGGATGTG&#34;,&#34;TCAGTCGTAGCAGTTCGATG&#34;,&#34;[]&#34;,&#34;sampleIndex_0_5_5-barcode_20_40_20&#34;
-&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001&#34;,&#34;GCTTCGTCCTCGAGGTCTATTGGCAGACACACGCTACACGTACGCTGCAGGTCGAGGGCACGCGAGAGATGTGTG&#34;,&#34;TGGCAGACACACGCTACA&#34;,&#34;[]&#34;,&#34;sampleIndex_0_5_5-barcode_20_38_18&#34;
-&#34;FailedDirectivesToMakeOutputSeq&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10002:10002&#34;,&#34;CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC&#34;,&#34;CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC&#34;,&#34;[]&#34;,&#34;&#34;
-&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003&#34;,&#34;CTACTGTCCACGAGGTCTCTGATGCACTGCGTTCCATGTTCGTACGCTGCAGGTCGACGGAAGGAGCGCGATGTG&#34;,&#34;GATGCACTGCGTTCCATGTT&#34;,&#34;[]&#34;,&#34;sampleIndex_0_5_5-barcode_20_40_20&#34;
+&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000&#34;,&#34;TTCACGTCCTCGAGGTCTCTTCAGTCGTAGCAGTTCGATGCGTACGCTACAGGTCGACGGTAAGAGAGGGATGTG&#34;,&#34;TCAGTCGTAGCAGTTCGATG&#34;,&#34;[True]&#34;,&#34;sampleIndex_0_5_5-barcode_20_40_20&#34;
+&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001&#34;,&#34;GCTTCGTCCTCGAGGTCTATTGGCAGACACACGCTACACGTACGCTGCAGGTCGAGGGCACGCGAGAGATGTGTG&#34;,&#34;TGGCAGACACACGCTACA&#34;,&#34;[True]&#34;,&#34;sampleIndex_0_5_5-barcode_20_38_18&#34;
+&#34;FailedDirectivesToMakeOutputSeq&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10002:10002&#34;,&#34;CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC&#34;,&#34;CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC&#34;,&#34;[True]&#34;,&#34;&#34;
+&#34;Passed&#34;,&#34;ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003&#34;,&#34;CTACTGTCCACGAGGTCTCTGATGCACTGCGTTCCATGTTCGTACGCTGCAGGTCGACGGAAGGAGCGCGATGTG&#34;,&#34;GATGCACTGCGTTCCATGTT&#34;,&#34;[True]&#34;,&#34;sampleIndex_0_5_5-barcode_20_40_20&#34;
 
 The first of the failed reads:
 @ExampleToyReads:1:exampleFlowCell:1:10000:10002:10002 1:N:0
@@ -13883,17 +13925,18 @@ This designs limits complexity of code and prevents a certain <em>fuzzy</em> mem
 <p>However, there is a single-thread ability to read from a file on disk using <code>--input</code>, and that can be indicated
 as being gzipped with the flag <code>-z</code>. Similarly, <code>itermae</code> is designed to output to standard output, but you can
 specify an output file with <code>--output</code>.</p>
-<p>Below is an example of using <code>parallel</code> to parallelize the above example:</p>
+<p>Below is an example of using <code>parallel</code> to parallelize the above example, 
+of course you'll need that installed and available:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="se">\</span>
     <span class="p">|</span> parallel --pipe -L <span class="m">4</span> <span class="se">\</span>
         <span class="s1">&#39;itermae -o &quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot; \</span>
 <span class="s1">            -oseq &quot;barcode&quot; -oid &quot;input.id+\&quot;_\&quot;+sampleIndex.seq&quot; -of &quot;fasta&quot; &#39;</span>
@@ -13963,10 +14006,10 @@ Also, I put the <code>CTCCACGAG</code> group, with an error <code>{e&lt;=1}</cod
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(?P&lt;rest&gt;(GTCCACGAG){e&lt;=1}[ATCGN]*)&quot;</span> <span class="se">\</span>
         -o <span class="s2">&quot;rest  &gt; (GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+\&quot;_\&quot;+sampleIndex.seq&quot;</span> -of <span class="s2">&quot;fasta&quot;</span>
@@ -14017,10 +14060,10 @@ the priming sites around it.</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-bash"><pre><span></span>cat ../example-data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
+<div class=" highlight hl-bash"><pre><span></span>cat itermae/data/toy.fastq <span class="p">|</span> itermae <span class="se">\</span>
         -o <span class="s2">&quot;input &gt; (?P&lt;sampleIndex&gt;[ATCGN]{5,5})(?P&lt;rest&gt;(GTCCACGAG){e&lt;=1}[ATCGN]*)&quot;</span> <span class="se">\</span>
         -o <span class="s2">&quot;rest  &gt; (?P&lt;upPrime&gt;GTCCACGAGGTCTCT){e&lt;=2}(?P&lt;barcode&gt;[ATCGN]{18,22})(?P&lt;downPrime&gt;CGTACGCTG){e&lt;=1}&quot;</span> <span class="se">\</span>
         -oseq <span class="s2">&quot;barcode&quot;</span> -oid <span class="s2">&quot;input.id+\&quot;_\&quot;+sampleIndex.seq&quot;</span> <span class="se">\</span>
