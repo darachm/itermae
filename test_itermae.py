@@ -53,39 +53,62 @@ def test_seqholder_match_filter(fastqfile):
             [ [i == 1] for i in [1,0,0,0,0,0,0,1,0] ]
             ):
         seqholder = itermae.SeqHolder(seq,verbosity=3)
-        try:
-            seqholder.apply_operation('a','input',
-                regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
-                    regex.BESTMATCH) )
-            seqholder.apply_operation('b','rest',
-                regex.compile("(?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})(CGTACGCTGC){e<=2}",
-                    regex.BESTMATCH) )
-            seqholder.apply_operation('c','rest',
-                regex.compile("(?P<fixed2>CGTACGCTGCAGGTC)(?<UMItail>GAC[ATCG]G[ATCG]A[ATCG]G[ATCG]G[ATCG]G[ATCG]GAT){s<=2}",
-                    regex.BESTMATCH) )
-        except:
-            pass
+        seqholder.apply_operation('a','input',
+            regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('b','rest',
+            regex.compile("(?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})(CGTACGCTGC){e<=2}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('c','rest',
+            regex.compile("(?P<fixed2>CGTACGCTGCAGGTC)(?<UMItail>GAC[ATCG]G[ATCG]A[ATCG]G[ATCG]G[ATCG]G[ATCG]GAT){s<=2}",
+                regex.BESTMATCH) )
         assert pos_pass == seqholder.apply_filters(['sample.length == 5 and rest.start >= 15']) 
         assert qual_pass == seqholder.apply_filters(['statistics.mean(fixed1.quality) >= 33.5'])
         assert seq_pass == seqholder.apply_filters(['sample.seq == "TTCAC" or sample.seq == "AGGAG"'])
 
-
-#            try:
-#                this_output = this.build_output(
-#                        "input.id+'_'+sample.seq+'_'+umi1.seq+umi2.seq+umi3.seq",
-#                        "strain" ) 
-#                outputs.append( ( this_output.id, this_output.seq ) )
-#                reports.append(this.format_report("pass",this_output.seq,
-#                        filter_results))
-#            except:
-#                outputs.append(None)
-#                reports.append(this.format_report("fail",this.seqs['input'],
-#                        filter_results))
-#        self.assertListEqual(filter_results,[[True],[True],[False],[True]])
-#        self.assertListEqual(outputs,[None,None,None,
-#                ('NB501157:100:H5J5LBGX2:1:11101:10000:19701_CTACT_GAG',
-#                    'GATGCACTGCGTTCCATGTT')
-#                ])
-#
-#if __name__ == '__main__':
-#    unittest.main()
+def test_seqholder_outputs(fastqfile):
+    for seq, seq_targets, filter_targets in zip(fastqfile,
+            [ 
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000_TTCAC','TCAGTCGTAGCAGTTCGATG'),
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001_GCTTC', 'TGGCAGACACACGCTACA'),
+                (None,None),
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003_CTACT', 'GATGCACTGCGTTCCATGTT'),
+                (None,None),
+                (None,None),
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10006:10006_TCGGC', 'ATTCTGAGCGGTGCCATAGT'),
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10007:10007_AGGAG', 'ATAAGTTAGACAGGTCAGC'),
+                ('ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008_ACGTA', 'CACACGCACGAATTTGCATA')
+                ],
+                            [
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000","TTCACGTCCTCGAGGTCTCTTCAGTCGTAGCAGTTCGATGCGTACGCTACAGGTCGACGGTAAGAGAGGGATGTG","TCAGTCGTAGCAGTTCGATG","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20"',
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001","GCTTCGTCCTCGAGGTCTATTGGCAGACACACGCTACACGTACGCTGCAGGTCGAGGGCACGCGAGAGATGTGTG","TGGCAGACACACGCTACA","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_21_18-fixed2_21_36_15-UMItail_36_53_17"',
+                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10002:10002","CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC","TGGCAGACACACGCTACA","FilterResults",""',
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003","CTACTGTCCACGAGGTCTCTGATGCACTGCGTTCCATGTTCGTACGCTGCAGGTCGACGGAAGGAGCGCGATGTG","GATGCACTGCGTTCCATGTT","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"',
+                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10004:10004","AAATTAGGGTCAACGCTACCTGTAGGAAGTGTCCGCATAAAGTGCACCGCATGGAAATGAAGACGGCCATTAGCT","GATGCACTGCGTTCCATGTT","FilterResults",""',
+                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10005:10005","CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC","GATGCACTGCGTTCCATGTT","FilterResults",""',
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10006:10006","TCGGCGTCCTCGAGGTCTCTATTCTGAGCGGTGCCATAGTCGTACGCTGCAGGTCGACCGAAGGTGGGAGATGTG","ATTCTGAGCGGTGCCATAGT","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"',
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10007:10007","AGGAGGTCCTCGAGGTCTCTATAAGTTAGACAGGTCAGCCGTACGCTGCAGGTCGACAGCTGGCGCGCGATGTGA","ATAAGTTAGACAGGTCAGC","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_22_19-fixed2_22_37_15-UMItail_37_54_17"',
+                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008","ACGTAGTCCACGAGGTCTCTCACACGCACGAATTTGCATACGTACGCTGCAGGTCGACTGGAAGGGCGGGATGTG","CACACGCACGAATTTGCATA","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"'
+                ],
+            ):
+        seqholder = itermae.SeqHolder(seq,verbosity=3)
+        seqholder.apply_operation('a','input',
+            regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('b','rest',
+            regex.compile("(?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})(CGTACGCTGC){e<=2}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('c','rest',
+            regex.compile("(?P<fixed2>CGTACGCTGCAGGTC)(?<UMItail>GAC[ATCG]G[ATCG]A[ATCG]G[ATCG]G[ATCG]G[ATCG]GAT){s<=2}",
+                regex.BESTMATCH) )
+        (this_output_id, this_output_seq) = (None,None)
+        try:
+            this_output = seqholder.build_output(
+                    "input.id+'_'+sample.seq",
+                    "strain" ) 
+            (this_output_id, this_output_seq) = (this_output.id,this_output.seq)
+            this_result = seqholder.format_report("pass",this_output.seq,"FilterResults")
+        except:
+            this_result = seqholder.format_report("fail_to_form",this_output.seq,"FilterResults")
+        assert seq_targets == ( this_output_id, this_output_seq ) 
+        assert filter_targets == this_result
