@@ -1,5 +1,6 @@
 
-.PHONY: container run-demos clean dist-pkg dist-files upload-pypi upload-testpypi
+.PHONY: container run-demos clean dist-pkg dist-files upload-pypi \
+	upload-testpypi profiler-runs
 
 demo: demo/demos_and_tutorial_itermae.html
 
@@ -26,6 +27,9 @@ upload-pypi: dist-files
 upload-testpypi: dist-files
 	python3 -m twine upload --repository testpypi dist/*
 
+# This is for running a few examples on a lot of reads, for profiling
+profiler-runs:
+	bash demo/profiler_runs.sh
 
 itermae.singularity: Singularity*
 	sudo rm -r $@ || echo "already gone"
