@@ -189,9 +189,13 @@ if args.verbose >= 1:
     print("\n["+str(time.time())+"] : "+
         "Then I'm going to construct outputs that look like:\n",
         file=sys.stderr)
-    for each in outputs_array:
-        print("  - With ID of : "+each[0]+"\n"+
-            "    and the sequence is the group(s) : "+each[1],file=sys.stderr)
+    if args.output_id is None:
+        oids = ["input.id"]
+    else:
+        oids = args.output_id
+    for oid, oseq in zip(oids,args.output_seq):
+        print("  - With ID of : "+oid+"\n"+
+            "    and the sequence is the group(s) : "+oseq,file=sys.stderr)
 
 filter_array = []
 # If it's omitted, we believe that means no filter, and we make it True

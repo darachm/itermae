@@ -36,7 +36,7 @@ def test_groupstats_flatten(groupstats):
 
 @pytest.fixture
 def fastqfile():
-    return SeqIO.parse("example-data/toy.fastq","fastq")
+    return SeqIO.parse("itermae/data/toy.fastq","fastq")
 def test_seqholder_verbosity(fastqfile):
     for i in fastqfile:
         seqholder = itermae.SeqHolder(i,verbosity=3)
