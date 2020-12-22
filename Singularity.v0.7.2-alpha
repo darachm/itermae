@@ -29,11 +29,9 @@ MAINTAINER darachm
     export DEBIAN_FRONTEND="noninteractive"
 
     apt -y update
-    apt -y install apt-utils software-properties-common language-pack-en
+    apt -y install apt-utils software-properties-common language-pack-en \
+        wget make
     update-locale
-
-    apt -y install python3 python3-pip
-    apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev gawk perl
 
     # Installing parallel from source, as the latest in ubuntu's pkgs is
     # from 2016 and is buggin out
@@ -42,7 +40,13 @@ MAINTAINER darachm
     cd parallel-20201222
     ./configure && make && make install
     cd /
-    parallel --citation || echo "why is this a return value of 1"
+    echo "will cite\n" | parallel --citation \
+        || echo "why is this a return value of 1"
+    # For pete's sake I'll cite the damn then when I have something to 
+    #  cite it with!
+
+    apt -y install python3 python3-pip
+    apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev gawk perl
 
     python3 -m pip install --upgrade pip
     python3 -m pip install itermae
