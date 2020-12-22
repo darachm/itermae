@@ -19,8 +19,13 @@ MAINTAINER darachm
     See the git repo for a ipynb/jupyter notebook with demos with the lone
     package as installed local, and you can extrapolate to Singularity...
 
-%post
+%environment
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
 
+%post
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
     export DEBIAN_FRONTEND="noninteractive"
 
     apt -y update
@@ -28,11 +33,19 @@ MAINTAINER darachm
     update-locale
 
     apt -y install python3 python3-pip
-    apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev parallel gawk perl 
+    apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev gawk perl
+
+    # Installing parallel from source, as the latest in ubuntu's pkgs is
+    # from 2016 and is buggin out
+    wget https://ftp.gnu.org/gnu/parallel/parallel-20201222.tar.bz2
+    tar -xvjf parallel-20201222.tar.bz2
+    cd parallel-20201222
+    ./configure && make && make install
+    cd /
+    parallel --citation || echo "why is this a return value of 1"
+
     python3 -m pip install --upgrade pip
     python3 -m pip install itermae
-
-    parallel --citation || echo "why is this a return value of 1"
 
 %test
 
