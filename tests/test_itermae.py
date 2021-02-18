@@ -11,7 +11,19 @@ from Bio import SeqIO
 
 #
 #
-# Class Tests
+# Setup inputs
+#
+#
+
+# I'm not testing BioPython SeqIO, I assume that's good.
+# This instead uses that to return a list of the records in the file.
+@pytest.fixture
+def fastqfile():
+    return SeqIO.parse("itermae/data/toy.fastq","fastq")
+
+#
+#
+# Ye Tests
 #
 #
 
@@ -47,30 +59,24 @@ def test_groupstats_flatten(groupstats):
     assert groupstats.flatten() == "5_15_10"
 
 #
-#
-# Full Tests
-#
+# SeqHolder Tests
 #
 
-#
-# Shortread FASTQ input
-#
-
-# Setup input
-
-@pytest.fixture
-def fastqfile():
-    return SeqIO.parse("itermae/data/toy.fastq","fastq")
+# Test SeqHolder verbosity
 def test_seqholder_verbosity(fastqfile):
     for i in fastqfile:
         seqholder = itermae.SeqHolder(i,verbosity=3)
         assert seqholder.verbosity == 3
+
+# Test SeqHolder dummyspacer is right
 def test_seqholder_dummy(fastqfile):
     for i in fastqfile:
         seqholder = itermae.SeqHolder(i,verbosity=3)
         assert seqholder.seqs['dummyspacer'].seq == 'X'
+        assert seqholder.seqs['dummyspacer'].letter_annotations['phred_quality'] == [40] 
 
-def test_seqholder_match_filter(fastqfile):
+# Test that SeqHolder can match with apply_operation
+def test_seqholder_match(fastqfile):
     for seq, pos_pass, qual_pass, seq_pass in zip(fastqfile,
             [ [i == 1] for i in [1,1,0,1,0,0,1,1,1] ],
             [ [i == 1] for i in [0,0,0,1,0,0,1,1,0] ],
@@ -89,6 +95,47 @@ def test_seqholder_match_filter(fastqfile):
         assert pos_pass == seqholder.apply_filters(['sample.length == 5 and rest.start >= 15']) 
         assert qual_pass == seqholder.apply_filters(['statistics.mean(fixed1.quality) >= 33.5'])
         assert seq_pass == seqholder.apply_filters(['sample.seq == "TTCAC" or sample.seq == "AGGAG"'])
+
+
+# Test that filters shortread fastq
+
+def test_seqholder_match_filter(fastqfile):
+    for seq, pos_pass, qual_pass, seq_pass, sequences_found in zip(fastqfile,
+            [ [i == 1] for i in [1,1,0,1,0,0,1,1,1] ],
+            [ [i == 1] for i in [0,0,0,1,0,0,1,1,0] ],
+            [ [i == 1] for i in [1,0,0,0,0,0,0,1,0] ],
+            [
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input']),
+                set(['dummyspacer','input']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+            ]
+            ):
+        seqholder = itermae.SeqHolder(seq,verbosity=0)
+        seqholder.apply_operation('a','input',
+            regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('b','rest',
+            regex.compile("(?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})(CGTACGCTGC){e<=2}",
+                regex.BESTMATCH) )
+        seqholder.apply_operation('c','rest',
+            regex.compile("(?P<fixed2>CGTACGCTGCAGGTC)(?<UMItail>GAC[ATCG]G[ATCG]A[ATCG]G[ATCG]G[ATCG]G[ATCG]GAT){s<=2}",
+                regex.BESTMATCH) )
+        # Are the right sequences found/matched for each read?
+        assert set(seqholder.seqs.keys()) == sequences_found 
+        # Does it pass a position filter?
+        assert pos_pass == seqholder.apply_filters(['sample.length == 5 and rest.start >= 15']) 
+        # Does it pass a quality filter, with statistics?
+        assert qual_pass == seqholder.apply_filters(['statistics.mean(fixed1.quality) >= 33.5'])
+        # Does it pass a specific sequence filter?
+        assert seq_pass == seqholder.apply_filters(['sample.seq == "TTCAC" or sample.seq == "AGGAG"'])
+
+# Test shortread fastq
 
 def test_seqholder_outputs(fastqfile):
     for seq, seq_targets, filter_targets in zip(fastqfile,
@@ -136,3 +183,10 @@ def test_seqholder_outputs(fastqfile):
             this_result = seqholder.format_report("fail_to_form",this_output.seq,"FilterResults")
         assert seq_targets == ( this_output_id, this_output_seq ) 
         assert filter_targets == this_result
+
+#
+# Full Tests
+#
+
+
+# todo - use yield, so yield the product (file?) then do cleanup maybe for external files
