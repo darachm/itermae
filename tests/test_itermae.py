@@ -8,6 +8,7 @@ import itermae
 
 import regex
 from Bio import SeqIO
+import subprocess
 
 #
 #
@@ -159,5 +160,45 @@ def test_seqholder_match_filter(fastqfile):
 # Full Tests
 #
 
+# run from shell with 
+# import subprocess
+# subprocess.run(["ls", "-l"])
 
-# todo - use yield, so yield the product (file?) then do cleanup maybe for external files
+# make a temporary path, somewhere
+# run command - capture stdout, stderr, etc
+# compare to authoritative toy results files
+# delete toy results
+
+# maybe use yield, so yield the product (file?) then do cleanup maybe for external files
+
+# on the tin
+def test_full_shortread_FASTQ_two_operations():
+    results = subprocess.run(
+        'cat example-data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+            '--verbose -of "fasta"',
+        shell=True,capture_output=True)
+    with open('outz','wb') as f:
+        f.write(results.stdout)
+    with open('errz','wb') as f:
+        f.write(results.stderr)
+
+# example output
+#CompletedProcess(args='itermae', returncode=1, stdout=b'', stderr=b"Wait a second, I don't understand the operations to be done! Are there any? Maybe there's small part I'm choking on? Maybe try adding steps in one at a time in an interactive context with '--limit' set, to debug easier. Exiting...\n")
+
+#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCACGAG){e<=1}[ATCGN]*)" \
+#            -oseq "rest" -oid "input.id+\"_\"+sampleIndex.seq" \
+#            -of "fasta" \
+#
+#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" \
+#            -oseq "barcode" -oid "input.id+\"_\"+sampleIndex.seq" \
+#            -of "fasta" \
+#
+#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" \
+#            -o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" \
+#            -oseq "barcode" -oid "input.id+\"_\"+sampleIndex.seq" \
+#            -of "fasta" \
