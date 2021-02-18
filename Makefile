@@ -1,6 +1,11 @@
+# For help, do `make help`
 
-.PHONY: container run-demos clean dist-pkg dist-files upload-pypi \
+.PHONY: help container run-demos clean dist-pkg dist-files upload-pypi \
 	upload-testpypi profiler-runs
+
+help: ## Display help
+	@echo 'Commands/rules to run:'
+	@grep '\s##\s' Makefile | mawk -F':.*?## ' '{printf "    %-20s%s", $$1, $$2}'
 
 demo: demo/demos_and_tutorial_itermae.html
 
