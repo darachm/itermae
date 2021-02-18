@@ -45,6 +45,27 @@ class GroupStats:
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 
+def format_sam_record(record_id, sequence, qualities, tags,
+        flag='0', reference_name='*', 
+        mapping_position='0', mapping_quality='255', cigar_string='*',
+        reference_name_of_mate='=', position_of_mate='0', template_length='0'
+    ):
+    return "\t".join([
+            record_id,
+            flag,
+            reference_name,
+            mapping_position,
+            mapping_quality,
+            cigar_string,
+            reference_name_of_mate,
+            position_of_mate,
+            template_length,
+            sequence,
+            qualities,
+            tags
+        ])
+
+
 class SeqHolder: 
     """
     This is the main holder of sequences, and does the matching and stuff.
@@ -343,16 +364,15 @@ def chop(
             for which, output_record in enumerate(output_records):
                 if out_format == "SAM":
                     print(
-                        "\t".join([
-                            output_record.id,
-                            "0", "*", "0", "255", "*", "=", "0", "0", 
-                            str(output_record.seq),
+                        format_sam_record(
+                            output_record.id, str(output_record.seq),
                             ''.join([chr(i+33) for i in 
                                     output_record.letter_annotations['phred_quality']]
                                     ),
-                            "XI:"+str(which)
-                            ])
-                        ,file=output_fh)
+                            "IE:Z:"+str(which)
+                        ),
+                        file=output_fh
+                    )
                 elif out_format == "FASTQ":
                     SeqIO.write(output_record, output_fh, "fastq") 
                 elif out_format == "FASTA":
