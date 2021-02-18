@@ -21,6 +21,10 @@ clean: ## Cleanup the demo outputs
 
 pkg-files=setup.py bin/itermae itermae/__init__.py
 
+test: dist-files ## Run pytest to ... well ... test it
+	python3 -m pip install dist/*.whl
+	pytest
+
 dist-files: $(pkg-files) ## Make distribution files for pypi
 	rm dist/* || echo""
 	python3 setup.py sdist bdist_wheel
