@@ -21,8 +21,11 @@ clean: ## Cleanup the demo outputs
 
 pkg-files=setup.py bin/itermae itermae/__init__.py
 
-test: dist-files ## Run pytest to ... well ... test it
+test: dist-files ## Reinstall and run pytest
 	python3 -m pip install dist/*.whl --force-reinstall --no-deps
+	pytest
+
+just-test: ## Just run pytest to test the tests
 	pytest
 
 dist-files: $(pkg-files) ## Make distribution files for pypi
