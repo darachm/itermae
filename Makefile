@@ -31,7 +31,7 @@ upload-pypi: dist-files ## Upload distribution files for pypi
 upload-testpypi: dist-files ## Upload distribution files for TEST pypi
 	python3 -m twine upload --repository testpypi dist/*
 
-profiler-runs: ## Run profiler experiments to look for performance tweaks
+profiler-runs: ## Run profiler experiments to look for performance tweaks with snakeviz
 	bash profiling_tests/profiler_runs.sh
 
 itermae.singularity: Singularity* ## Build Singularity container from recipe

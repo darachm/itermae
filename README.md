@@ -49,7 +49,7 @@ Do one thing well, right? That's the aim. Feedback is welcome.
 That should have some examples and ideas for how to use it.
 There's also some longer runs that are launched by a bash script in
 `profiling_tests`, these generate longer runs for profiling purposes
-with `cProfile`.
+with `cProfile` and `snakeviz`.
 
 I believe I'm the only one using this tool, so let me know if you ever try it.
 I'd love to hear about it, and would be very eager to help you use it and
