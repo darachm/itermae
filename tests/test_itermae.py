@@ -3,9 +3,19 @@
 import pytest
 
 import itermae
+# Requires that you've installed it, so make the dist-files and install locally
+# The Makefile rule `test` does this
 
 import regex
 from Bio import SeqIO
+
+#
+#
+# Class Tests
+#
+#
+
+# Test MatchScores class
 
 @pytest.fixture
 def matchscore():
@@ -20,6 +30,8 @@ def test_matchscore_dels(matchscore):
 def test_matchscore_flatten(matchscore):
     assert matchscore.flatten() == "1_2_3"
 
+# Test GroupStats class
+
 @pytest.fixture
 def groupstats():
     return itermae.GroupStats(5,15,[36]*10)
@@ -33,6 +45,18 @@ def test_groupstats_quality(groupstats):
     assert groupstats.quality == [36]*10
 def test_groupstats_flatten(groupstats):
     assert groupstats.flatten() == "5_15_10"
+
+#
+#
+# Full Tests
+#
+#
+
+#
+# Shortread FASTQ input
+#
+
+# Setup input
 
 @pytest.fixture
 def fastqfile():
