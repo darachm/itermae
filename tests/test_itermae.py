@@ -3,24 +3,14 @@
 import pytest
 
 import itermae
-# Requires that you've installed it, so make the dist-files and install locally
-# The Makefile rule `test` does this
 
+# Required for testing apply_operation, as regex is generated in the command
+# line program
 import regex
+# Required for testing SeqHolder etc. without the file IO of main script
 from Bio import SeqIO
+# Required for full-file input/output testing
 import subprocess
-
-#
-#
-# Setup inputs
-#
-#
-
-# I'm not testing BioPython SeqIO, I assume that's good.
-# This instead uses that to return a list of the records in the file.
-@pytest.fixture
-def fastqfile():
-    return SeqIO.parse("itermae/data/toy.fastq","fastq")
 
 #
 #
@@ -78,6 +68,13 @@ def test_seqholder_dummy(fastqfile):
         assert seqholder.seqs['dummyspacer'].seq == 'X'
         # Is the number we just put there 40?
         assert seqholder.seqs['dummyspacer'].letter_annotations['phred_quality'] == [40] 
+
+# Setup inputs
+# I'm not testing BioPython SeqIO, I assume that's good.
+# This instead uses that to return a list of the records in the file.
+@pytest.fixture
+def fastqfile():
+    return SeqIO.parse("itermae/data/toy.fastq","fastq")
 
 # Test that SeqHolder can apply_operation, then since we're there testing
 # that it finds the right groups for each seq, and passes or fails filters 
@@ -160,45 +157,135 @@ def test_seqholder_match_filter(fastqfile):
 # Full Tests
 #
 
-# run from shell with 
-# import subprocess
-# subprocess.run(["ls", "-l"])
-
-# make a temporary path, somewhere
-# run command - capture stdout, stderr, etc
-# compare to authoritative toy results files
-# delete toy results
-
-# maybe use yield, so yield the product (file?) then do cleanup maybe for external files
-
-# on the tin
-def test_full_shortread_FASTQ_two_operations():
+# As it says on the tin
+def test_full_shortread_FASTQ_one_operation_to_fasta():
     results = subprocess.run(
-        'cat example-data/barseq.fastq | '+
+        'cat itermae/data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '--verbose -of "fasta"',
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_one_operation.fasta','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_one_operation.fasta','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+# As it says on the tin
+def test_full_shortread_FASTQ_one_operation_to_fastq():
+    results = subprocess.run(
+        'cat itermae/data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '--verbose -of "fastq"',
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_one_operation.fastq','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_one_operation.fastq','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+# As it says on the tin
+def test_full_shortread_FASTQ_one_operation_to_sam():
+    results = subprocess.run(
+        'cat itermae/data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '--verbose -of "sam"',
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_one_operation.sam','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_one_operation.sam','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+
+
+
+
+
+
+
+
+
+# As it says on the tin
+def test_full_shortread_FASTQ_two_operations_to_fasta():
+    results = subprocess.run(
+        'cat itermae/data/barseq.fastq | '+
             'itermae '+
             '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
             '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
             '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
             '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
             '--verbose -of "fasta"',
-        shell=True,capture_output=True)
-    with open('outz','wb') as f:
-        f.write(results.stdout)
-    with open('errz','wb') as f:
-        f.write(results.stderr)
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_two_operations.fasta','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_two_operations.fasta','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
 
-# example output
-#CompletedProcess(args='itermae', returncode=1, stdout=b'', stderr=b"Wait a second, I don't understand the operations to be done! Are there any? Maybe there's small part I'm choking on? Maybe try adding steps in one at a time in an interactive context with '--limit' set, to debug easier. Exiting...\n")
+# As it says on the tin
+def test_full_shortread_FASTQ_two_operations_to_fastq():
+    results = subprocess.run(
+        'cat itermae/data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+            '--verbose -of "fastq"',
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_two_operations.fastq','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_two_operations.fastq','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
 
-#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCACGAG){e<=1}[ATCGN]*)" \
-#            -oseq "rest" -oid "input.id+\"_\"+sampleIndex.seq" \
-#            -of "fasta" \
-#
-#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" \
-#            -oseq "barcode" -oid "input.id+\"_\"+sampleIndex.seq" \
-#            -of "fasta" \
-#
-#            -o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" \
-#            -o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" \
-#            -oseq "barcode" -oid "input.id+\"_\"+sampleIndex.seq" \
-#            -of "fasta" \
+# As it says on the tin
+def test_full_shortread_FASTQ_two_operations_to_sam():
+    results = subprocess.run(
+        'cat itermae/data/barseq.fastq | '+
+            'itermae '+
+            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+            '--verbose -of "sam"',
+        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_two_operations.sam','w') as f:
+#        f.write(results.stdout)
+    with open('itermae/data/barseq_two_operations.sam','r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+##### Template for full functional tests
+##### As it says on the tin
+####def test_full_shortread_FASTQ_two_operations_to_sam():
+####    results = subprocess.run(
+####        'cat itermae/data/barseq.fastq | '+
+####            'itermae '+
+####            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+####            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+####            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+####            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+####            '--verbose -of "sam"',
+####        shell=True,capture_output=True,encoding='utf-8')
+####    with open('itermae/data/barseq_two_operations.fastq','w') as f:
+####        f.write(results.stdout)
+#####    with open('itermae/data/barseq_two_operations.fastq','r') as f:
+#####        expected_file = f.readlines()
+#####    for i,j in zip(results.stdout.split('\n'),expected_file):
+#####        assert str(i) == str(j.rstrip('\n'))
+####
+
+
