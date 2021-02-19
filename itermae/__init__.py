@@ -255,13 +255,15 @@ def reader(
     the IO. 
     """
 
-    ### Open up file handles
+    #
+    # Open up file handles
+    #
 
-    # If that's STDIN, which is default, then we're taking sequences by STDIN
-    if input_file == "STDIN":
+    # Input
+    if input_file == "STDIN": # STDIN is default
         input_fh = sys.stdin
     else:
-        input_fh = open(input_file,"rU")
+        input_fh = open(input_file,"rU") # rU is read universal line endings
 
     if is_gzipped:
         with gzip.open(input_fh,"rt") as input_fh_gz:
@@ -269,12 +271,10 @@ def reader(
     else:
         input_seqs = open_appropriate_input_format(input_fh, in_format)
 
-
-    # Opening up output file handles, will hand them off to each chop 
+    # Outputs - passed records, failed records, report file
     if output_file == "STDOUT":
         output_fh = sys.stdout
-    # If you've specified a file, then that's here
-    else:
+    else: # If you've specified a filepath, then that's here
         output_fh = open(output_file,"a")
     # If no failed file specified, then we're just ignoring it
     if failed_file is None:
