@@ -215,6 +215,34 @@ def read_sam_file(fh):
             )
 
 
+def read_raw_file(fh):
+    """
+    This just treats one sequence per line as a SeqRecord.
+    """
+    for i in fh.readlines():
+        seq = i.rstrip()
+        yield SeqRecord.SeqRecord(
+            Seq.Seq(seq), id=seq, 
+            letter_annotations={'phred_quality': 40*len(seq) }
+            )
+
+def open_appropriate_input_format(in_fh, format_name):
+    if   format_name == 'fastq':
+        return SeqIO.parse(in_fh, format_name)
+    elif format_name == 'sam':
+        return iter(read_sam_file(in_fh))
+    elif format_name == 'fasta':
+        return SeqIO.parse(in_fh, format_name)
+    elif format_name == 'raw':
+        return iter(read_raw_file(in_fh))
+    else:
+        print("I don't know that input file format name. "+
+            "I will try and use the provided format name in BioPython "+
+            "SeqIO, and we will find out together if that works.",
+            file=sys.stderr) 
+        return SeqIO.parse(in_fh, format_name)
+
+
 def reader(
         input_file, is_gzipped, 
         operations_array, filters , outputs_array,
@@ -231,32 +259,15 @@ def reader(
 
     # If that's STDIN, which is default, then we're taking sequences by STDIN
     if input_file == "STDIN":
-        if is_gzipped:
-            with gzip.open(sys.stdin,"rt") as input_file_gz:
-                if in_format == 'sam':
-                    input_seqs = iter(read_sam_file(input_file_gz))
-                else:
-                    input_seqs = SeqIO.parse(input_file_gz, in_format)
-        else:
-            if in_format == 'sam':
-                input_seqs = iter(read_sam_file(sys.stdin))
-            else:
-                input_seqs = SeqIO.parse(sys.stdin, in_format)
+        input_fh = sys.stdin
     else:
-        # Or if it's gzipped then it's from a gzipped file (but no gzipped
-        # STDIN plz, just zcat it
-        if is_gzipped:
-            with gzip.open(input_file,"rt") as input_file_gz:
-                if in_format == 'sam':
-                    input_seqs = iter(read_sam_file(input_file_gz))
-                else:
-                    input_seqs = SeqIO.parse(input_file_gz, in_format)
-        # Otherwise is a flat file I assume
-        else:
-            if in_format == 'sam':
-                input_seqs = iter(read_sam_file(sys.stdin))
-            else:
-                input_seqs = SeqIO.parse(sys.stdin, in_format)
+        input_fh = open(input_file,"rU")
+
+    if is_gzipped:
+        with gzip.open(input_fh,"rt") as input_fh_gz:
+            input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
+    else:
+        input_seqs = open_appropriate_input_format(input_fh, in_format)
 
 
     # Opening up output file handles, will hand them off to each chop 
@@ -290,6 +301,8 @@ def reader(
             output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
             verbosity=verbosity
             )
+
+    input_fh.close()
 
     return(0)
 
@@ -406,7 +419,8 @@ def chop(
                         SeqIO.write(output_record, output_fh, out_format) 
                     except:
                         print("I don't know '"+out_format+"' format, "+
-                            "exiting over that. I know sam, fastq, and fasta.") 
+                            "exiting over that. I know sam, fastq, and fasta.",
+                            file=sys.stderr) 
                         exit(1)
 
                 # If we want to write the report, we make it

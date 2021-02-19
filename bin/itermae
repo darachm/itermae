@@ -28,8 +28,14 @@ parser.add_argument("-z","--gzipped",action="store_true",
     help="If the input is gzipped.")
 # Input format
 parser.add_argument("-if","--input-format",default='fastq',
-    help="What format the input is. Default is 'FASTQ', but 'SAM' is also "+
-        "available (but most information will be lost, including the tags).")
+    help="What format the input is. Default is 'FASTQ'. I expect this, or "+
+        "'SAM', 'FASTA', or 'raw' formats. "+
+        "Anything other than 'SAM' and 'raw' are handled by BioPython SeqIO, "+
+        "so it *should* read anything that can read. "+
+        "'SAM' uses a custom function that loses the input tags, but uses the "+
+        "ID and quality. "+
+        "'raw' means only one sequence per line, and "+
+        "sets the sequence as sequence ID and PHRED qualities as 40.")
 
 # Output determination
 parser.add_argument("--output",default="STDOUT",
