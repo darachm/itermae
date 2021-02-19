@@ -45,27 +45,6 @@ class GroupStats:
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 
-def format_sam_record(record_id, sequence, qualities, tags,
-        flag='0', reference_name='*', 
-        mapping_position='0', mapping_quality='255', cigar_string='*',
-        reference_name_of_mate='=', position_of_mate='0', template_length='0'
-    ):
-    return "\t".join([
-            record_id,
-            flag,
-            reference_name,
-            mapping_position,
-            mapping_quality,
-            cigar_string,
-            reference_name_of_mate,
-            position_of_mate,
-            template_length,
-            sequence,
-            qualities,
-            tags
-        ])
-
-
 class SeqHolder: 
     """
     This is the main holder of sequences, and does the matching and stuff.
@@ -200,10 +179,46 @@ class SeqHolder:
             "\"" )
 
 
+def format_sam_record(record_id, sequence, qualities, tags,
+        flag='0', reference_name='*', 
+        mapping_position='0', mapping_quality='255', cigar_string='*',
+        reference_name_of_mate='=', position_of_mate='0', template_length='0'
+    ):
+    return "\t".join([
+            record_id,
+            flag,
+            reference_name,
+            mapping_position,
+            mapping_quality,
+            cigar_string,
+            reference_name_of_mate,
+            position_of_mate,
+            template_length,
+            sequence,
+            qualities,
+            tags
+        ])
+
+
+def read_sam_file(fh):
+    """
+    This is a minimal reader, just for getting the fields I like and emiting
+    SeqRecord objects, sort of like SeqIO. Putting SAM tags in description.
+    """
+    for i in fh.readlines():
+        fields = i.rstrip('\n').split('\t')
+        yield SeqRecord.SeqRecord(
+            Seq.Seq(fields[9]),
+            id=fields[0],
+            letter_annotations={'phred_quality':[ord(i)-33 for i in fields[10]]},
+            description=fields[11]
+            )
+
+
 def reader(
         input_file, is_gzipped, 
         operations_array, filters , outputs_array,
-        out_format, output_file, failed_file, report_file,
+        in_format, out_format, output_file, failed_file, report_file,
         verbosity
         ):
     """
@@ -218,19 +233,31 @@ def reader(
     if input_file == "STDIN":
         if is_gzipped:
             with gzip.open(sys.stdin,"rt") as input_file_gz:
-                input_seqs = SeqIO.parse(input_file_gz,"fastq")
-                # No idea if this works, is at all sensible
+                if in_format == 'sam':
+                    input_seqs = iter(read_sam_file(input_file_gz))
+                else:
+                    input_seqs = SeqIO.parse(input_file_gz, in_format)
         else:
-            input_seqs = SeqIO.parse(sys.stdin,"fastq")
+            if in_format == 'sam':
+                input_seqs = iter(read_sam_file(sys.stdin))
+            else:
+                input_seqs = SeqIO.parse(sys.stdin, in_format)
     else:
         # Or if it's gzipped then it's from a gzipped file (but no gzipped
         # STDIN plz, just zcat it
         if is_gzipped:
             with gzip.open(input_file,"rt") as input_file_gz:
-                input_seqs = SeqIO.parse(input_file_gz,"fastq")
+                if in_format == 'sam':
+                    input_seqs = iter(read_sam_file(input_file_gz))
+                else:
+                    input_seqs = SeqIO.parse(input_file_gz, in_format)
         # Otherwise is a flat file I assume
         else:
-            input_seqs = SeqIO.parse(input_file,"fastq")
+            if in_format == 'sam':
+                input_seqs = iter(read_sam_file(sys.stdin))
+            else:
+                input_seqs = SeqIO.parse(sys.stdin, in_format)
+
 
     # Opening up output file handles, will hand them off to each chop 
     if output_file == "STDOUT":
@@ -258,6 +285,7 @@ def reader(
             seq_holder=SeqHolder(each_seq,verbosity=verbosity),  
             operations_array=operations_array, filters=filters, 
             outputs_array=outputs_array, 
+            in_format=in_format,
             out_format=out_format, 
             output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
             verbosity=verbosity
@@ -269,7 +297,7 @@ def reader(
 def chop(
     seq_holder,
     operations_array, filters, outputs_array, 
-    out_format,
+    in_format, out_format,
     output_fh, failed_fh, report_fh,
     verbosity
     ):
@@ -362,7 +390,7 @@ def chop(
 
             # Format the output record as appropriate
             for which, output_record in enumerate(output_records):
-                if out_format == "SAM":
+                if out_format == "sam":
                     print(
                         format_sam_record(
                             output_record.id, str(output_record.seq),
@@ -373,14 +401,13 @@ def chop(
                         ),
                         file=output_fh
                     )
-                elif out_format == "FASTQ":
-                    SeqIO.write(output_record, output_fh, "fastq") 
-                elif out_format == "FASTA":
-                    SeqIO.write(output_record, output_fh, "fasta") 
                 else:
-                    print("I don't know '"+out_format+"' format, "+
-                        "exiting over that. I know SAM, FASTQ, and FASTA.") 
-                    exit(1)
+                    try:
+                        SeqIO.write(output_record, output_fh, out_format) 
+                    except:
+                        print("I don't know '"+out_format+"' format, "+
+                            "exiting over that. I know sam, fastq, and fasta.") 
+                        exit(1)
 
                 # If we want to write the report, we make it
                 if report_fh != None:
