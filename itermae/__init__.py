@@ -215,16 +215,13 @@ def read_sam_file(fh):
             )
 
 
-def read_raw_file(fh):
+def read_txt_file(fh):
     """
     This just treats one sequence per line as a SeqRecord.
     """
     for i in fh.readlines():
         seq = i.rstrip()
-        yield SeqRecord.SeqRecord(
-            Seq.Seq(seq), id=seq, 
-            letter_annotations={'phred_quality': 40*len(seq) }
-            )
+        yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq )
 
 def open_appropriate_input_format(in_fh, format_name):
     if   format_name == 'fastq':
@@ -233,8 +230,8 @@ def open_appropriate_input_format(in_fh, format_name):
         return iter(read_sam_file(in_fh))
     elif format_name == 'fasta':
         return SeqIO.parse(in_fh, format_name)
-    elif format_name == 'raw':
-        return iter(read_raw_file(in_fh))
+    elif format_name == 'txt':
+        return iter(read_txt_file(in_fh))
     else:
         print("I don't know that input file format name. "+
             "I will try and use the provided format name in BioPython "+
@@ -320,6 +317,14 @@ def chop(
     It's a bit messy, so I've tried to make it clear with comments to break it
     up into sections.
     """
+
+    # If qualities are missing, add them as just 40
+    if 'phred_quality' not in seq_holder.seqs['input'].letter_annotations.keys():
+        seq_holder.seqs['input'].letter_annotations['phred_quality'] = [40]*len(seq_holder.seqs['input'])
+        if verbosity >= 2:
+            print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
+                "to sequence.",
+                file=sys.stderr)
 
     # For chop grained verbosity, report
     if verbosity >= 2:
