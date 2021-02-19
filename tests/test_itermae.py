@@ -278,6 +278,7 @@ def test_full_shortread_SAM_two_operations_to_fasta():
     results = subprocess.run(
         'cat itermae/data/barseq.sam | '+
             'itermae '+
+            '-if sam '+
             '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
             '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
             '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
@@ -286,7 +287,7 @@ def test_full_shortread_SAM_two_operations_to_fasta():
         shell=True,capture_output=True,encoding='utf-8')
 #    with open('itermae/data/barseq_sam_two_operations.fasta','w') as f:
 #        f.write(results.stdout)
-    with open('itermae/data/barseq_sam_two_operations.fasta','r') as f:
+    with open('itermae/data/barseq_two_operations.fasta','r') as f:
         expected_file = f.readlines()
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
@@ -296,6 +297,7 @@ def test_full_shortread_SAM_two_operations_to_fastq():
     results = subprocess.run(
         'cat itermae/data/barseq.sam | '+
             'itermae '+
+            '-if sam '+
             '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
             '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
             '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
@@ -304,7 +306,7 @@ def test_full_shortread_SAM_two_operations_to_fastq():
         shell=True,capture_output=True,encoding='utf-8')
 #    with open('itermae/data/barseq_sam_two_operations.fastq','w') as f:
 #        f.write(results.stdout)
-    with open('itermae/data/barseq_sam_two_operations.fastq','r') as f:
+    with open('itermae/data/barseq_two_operations.fastq','r') as f:
         expected_file = f.readlines()
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
@@ -314,6 +316,7 @@ def test_full_shortread_SAM_two_operations_to_sam():
     results = subprocess.run(
         'cat itermae/data/barseq.sam | '+
             'itermae '+
+            '-if sam '+
             '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
             '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
             '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
@@ -322,7 +325,7 @@ def test_full_shortread_SAM_two_operations_to_sam():
         shell=True,capture_output=True,encoding='utf-8')
 #    with open('itermae/data/barseq_sam_two_operations.sam','w') as f:
 #        f.write(results.stdout)
-    with open('itermae/data/barseq_sam_two_operations.sam','r') as f:
+    with open('itermae/data/barseq_two_operations.sam','r') as f:
         expected_file = f.readlines()
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
