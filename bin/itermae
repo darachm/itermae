@@ -26,6 +26,10 @@ parser.add_argument("--input",default="STDIN",
 # Is it gzip'd ?
 parser.add_argument("-z","--gzipped",action="store_true",
     help="If the input is gzipped.")
+# Input format
+parser.add_argument("-if","--input-format",default='fastq',
+    help="What format the input is. Default is 'FASTQ', but 'SAM' is also "+
+        "available (but most information will be lost, including the tags).")
 
 # Output determination
 parser.add_argument("--output",default="STDOUT",
@@ -164,8 +168,8 @@ except:
 
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : "+
-        "I'm reading in something, applying these operations of "+
-        "alignment:\n",file=sys.stderr)
+        "I'm reading in a "+args.input_format+" format file, "+
+        " applying these operations of matching:\n",file=sys.stderr)
     for each in operations_array:
         print("  - from : "+each[0]+"\n"+
             "    extract groups with regex : '"+str(each[1]),
@@ -239,7 +243,8 @@ itermae.reader(
     input_file=vars(args)["input"], is_gzipped=args.gzipped,
     operations_array=operations_array, filters=filter_array, 
     outputs_array=outputs_array,
-    out_format=args.output_format.upper(),
+    in_format=args.input_format.lower(),
+    out_format=args.output_format.lower(),
     output_file=vars(args)["output"],failed_file=vars(args)["failed"],
     report_file=vars(args)["report"],
     verbosity=args.verbose
