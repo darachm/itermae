@@ -215,7 +215,7 @@ def reader(
     ### Open up file handles
 
     # If that's STDIN, which is default, then we're taking sequences by STDIN
-    if input_file is "STDIN":
+    if input_file == "STDIN":
         if is_gzipped:
             with gzip.open(sys.stdin,"rt") as input_file_gz:
                 input_seqs = SeqIO.parse(input_file_gz,"fastq")
@@ -233,7 +233,7 @@ def reader(
             input_seqs = SeqIO.parse(input_file,"fastq")
 
     # Opening up output file handles, will hand them off to each chop 
-    if output_file is "STDOUT":
+    if output_file == "STDOUT":
         output_fh = sys.stdout
     # If you've specified a file, then that's here
     else:
@@ -245,7 +245,7 @@ def reader(
     else:
         failed_fh = open(failed_file,"a")
     # Same for optional report
-    if report_file is None:
+    if report_file == None:
         report_fh = None
     else:
         report_fh = open(report_file,"a")
@@ -335,12 +335,12 @@ def chop(
                 file=sys.stderr)
 
         # So if we should write this per-record report
-        if report_fh is not None:
+        if report_fh != None:
             print( seq_holder.format_report("FailedFilter",
                     seq_holder.seqs['input'].seq, evaluated_filters)
                 ,file=report_fh)
 
-        if failed_fh is not None:
+        if failed_fh != None:
             SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
 
         return 0
@@ -383,7 +383,7 @@ def chop(
                     exit(1)
 
                 # If we want to write the report, we make it
-                if report_fh is not None:
+                if report_fh != None:
                     print( seq_holder.format_report("Passed",
                             output_record.seq, evaluated_filters)
                         ,file=report_fh)
@@ -407,13 +407,13 @@ def chop(
                     "output.", file=sys.stderr)
 
             # If we want to write the report, we make it
-            if report_fh is not None:
+            if report_fh != None:
                 print( 
                     seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
                         seq_holder.seqs['input'].seq, evaluated_filters)
                     ,file=report_fh)
 
-            if failed_fh is not None:
+            if failed_fh != None:
                 SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
 
             return 0
