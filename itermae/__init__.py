@@ -419,12 +419,17 @@ def chop(
                         ),
                         file=output_fh
                     )
+                elif out_format == "txt":
+                    print(
+                        str(output_record.seq),
+                        file=output_fh
+                    )
                 else:
                     try:
                         SeqIO.write(output_record, output_fh, out_format) 
                     except:
                         print("I don't know '"+out_format+"' format, "+
-                            "exiting over that. I know sam, fastq, and fasta.",
+                            "I know sam, txt, fastq, and fasta.",
                             file=sys.stderr) 
                         exit(1)
 
