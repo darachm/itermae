@@ -10,6 +10,7 @@ import argparse
 import re
 import itertools
 import copy
+import io
 
 # Importing packages for the heart of it, fuzzy regex and SeqIO classes
 import regex
@@ -233,8 +234,8 @@ def open_appropriate_input_format(in_fh, format_name):
     elif format_name == 'txt':
         return iter(read_txt_file(in_fh))
     else:
-        print("I don't know that input file format name. "+
-            "I will try and use the provided format name in BioPython "+
+        print("I don't know that input file format name '"+format_name+
+            "'. I will try and use the provided format name in BioPython "+
             "SeqIO, and we will find out together if that works.",
             file=sys.stderr) 
         return SeqIO.parse(in_fh, format_name)
@@ -258,19 +259,40 @@ def reader(
 
     # Input
     if input_file == "STDIN": # STDIN is default
-        input_fh = sys.stdin
-    else:
-        input_fh = open(input_file,"rU") # rU is read universal line endings
-
-    if is_gzipped:
-        if input_file == "STDIN":
+        if is_gzipped: # sys.stdin is opened as txt, not bytes
             print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
-                "Or write to file, and point me that-a-way.",file=sys.stderr) 
+                "Or write to file, and point me that-a-way. \n\n"+
+                "You shouldn't see this error, it shoulda been caught in the "+
+                "launcher script.",file=sys.stderr) 
             exit(1)
-        input_fh_gz = gzip.open(input_fh,'rt')
-        input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
+        input_text = sys.stdin
     else:
-        input_seqs = open_appropriate_input_format(input_fh, in_format)
+        if is_gzipped:
+            input_text = gzip.open(input_file,'rt',encoding='ascii')
+        else:
+            input_text = open(input_file,"rt") 
+
+    input_seqs = open_appropriate_input_format(input_text, in_format)
+
+#    # Input
+#    if input_file == "STDIN": # STDIN is default
+#        if is_gzipped: # sys.stdin is opened as txt, not bytes
+#            print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
+#                "Or write to file, and point me that-a-way. \n\n"+
+#                "You shouldn't see this error, it shoulda been caught in the "+
+#                "launcher script.",file=sys.stderr) 
+#            exit(1)
+#        input_fh = sys.stdin
+#        input_seqs = open_appropriate_input_format(input_fh, in_format)
+#    else:
+#        input_fh = open(input_file,"rb") 
+#        if is_gzipped:
+#            input_fh_gz = gzip.open(input_fh,'rt',encoding='ascii')
+#            input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
+#        else:
+#            input_seqs = open_appropriate_input_format(
+#                    io.TextIOWrapper(input_fh),
+#                    in_format)
 
     # Outputs - passed records, failed records, report file
     if output_file == "STDOUT":
@@ -303,11 +325,7 @@ def reader(
             verbosity=verbosity
             )
 
-    input_fh.close()
-    try:
-        input_fh_gz.close()
-    except:
-        pass # means it wasn't opened, I assume
+    input_text.close()
 
     return(0)
 

@@ -9,6 +9,8 @@ import itermae
 import regex
 # Required for testing SeqHolder etc. without the file IO of main script
 from Bio import SeqIO
+# For doing combinations of the full-file parameters and formats
+import itertools
 # Required for full-file input/output testing
 import subprocess
 
@@ -159,298 +161,379 @@ def test_seqholder_match_filter(fastqfile):
 #
 #
 
+one_operation_string = (
+    '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+    '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '
+    )
+two_operation_string = (
+    '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+    '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+    '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+    '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '
+    )
+
 #
 # shortread FASTQ, one operation
 #
 
 # As it says on the tin
-def test_full_shortread_FASTQ_one_operation_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
+def test_full_combinations():
+    operations_list = [one_operation_string, two_operation_string]
+    for input_format, which_ops, output_format in itertools.product(
+            ['fastq','fasta','sam','txt'],
+            [0,1],
+            ['fastq','fasta','sam','txt'],
+        ):
+
+        results = subprocess.run(
+            'cat itermae/data/barseq.'+input_format+' | '+
             'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '--verbose -of "fasta"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_one_operation.fasta','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_one_operation.fasta','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
+            '-if '+input_format+' '+
+            operations_list[which_ops]+
+            '--verbose -of '+output_format ,
+            shell=True,capture_output=True,encoding='utf-8')
+
+        filename = 'itermae/data/test_outputs/barseq_combinations_'
+        if input_format in ['fastq','sam']:
+            filename += 'with_qualities_'
+        else:
+            filename += 'no_qualities_'
+        if input_format in ['txt']:
+            filename += 'with_seq_as_id_'
+        filename += str(which_ops+1)+'_ops'
+        filename += '.'+output_format
+
+#        with open(filename,'w') as f:
+#            f.write(results.stdout)
+
+        with open(filename,'r') as f:
+            expected_file = f.readlines()
+        for i,j in zip(results.stdout.split('\n'),expected_file):
+            assert str(i) == str(j.rstrip('\n'))
 
 # As it says on the tin
-def test_full_shortread_FASTQ_one_operation_to_fastq():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
-            'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '--verbose -of "fastq"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_one_operation.fastq','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_one_operation.fastq','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
+def test_full_combinations_gzipped():
+    operations_list = [one_operation_string, two_operation_string]
+    for input_format, which_ops, output_format in itertools.product(
+            ['fastq','fasta','sam','txt'],
+            [0,1],
+            ['fastq','fasta','sam','txt'],
+        ):
 
-# As it says on the tin
-def test_full_shortread_FASTQ_one_operation_to_sam():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
+        results = subprocess.run(
             'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '--verbose -of "sam"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_one_operation.sam','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_one_operation.sam','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
+            '--input itermae/data/barseq.'+input_format+'.gz --gzipped '+
+            '-if '+input_format+' '+
+            operations_list[which_ops]+
+            '--verbose -of '+output_format ,
+            shell=True,capture_output=True,encoding='utf-8')
+
+        filename = 'itermae/data/test_outputs/barseq_combinations_'
+        if input_format in ['fastq','sam']:
+            filename += 'with_qualities_'
+        else:
+            filename += 'no_qualities_'
+        if input_format in ['txt']:
+            filename += 'with_seq_as_id_'
+        filename += str(which_ops+1)+'_ops'
+        filename += '.'+output_format
+
+#        with open(filename,'w') as f:
+#            f.write(results.stdout)
+
+        with open(filename,'r') as f:
+            expected_file = f.readlines()
+        for i,j in zip(results.stdout.split('\n'),expected_file):
+            assert str(i) == str(j.rstrip('\n'))
 
 #
-# shortread FASTQ, two operation
+## As it says on the tin
+#def test_full_shortread_FASTQ_one_operation_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            one_operation_string +
+#            '--verbose -of "fasta"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_one_operation.fasta','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_one_operation.fasta','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-
-# As it says on the tin
-def test_full_shortread_FASTQ_two_operations_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
-            'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fasta"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_two_operations.fasta','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.fasta','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_FASTQ_two_operations_to_fastq():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
-            'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fastq"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_two_operations.fastq','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.fastq','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_FASTQ_two_operations_to_sam():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fastq | '+
-            'itermae '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "sam"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_two_operations.sam','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.sam','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
+## As it says on the tin
+#def test_full_shortread_FASTQ_one_operation_to_fastq():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fastq"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_one_operation.fastq','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_one_operation.fastq','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-# shortread SAM, two operation
+## As it says on the tin
+#def test_full_shortread_FASTQ_one_operation_to_sam():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '--verbose -of "sam"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_one_operation.sam','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_one_operation.sam','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-
-# As it says on the tin
-def test_full_shortread_SAM_two_operations_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.sam | '+
-            'itermae '+
-            '-if sam '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fasta"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_sam_two_operations.fasta','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.fasta','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_SAM_two_operations_to_fastq():
-    results = subprocess.run(
-        'cat itermae/data/barseq.sam | '+
-            'itermae '+
-            '-if sam '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fastq"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_sam_two_operations.fastq','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.fastq','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_SAM_two_operations_to_sam():
-    results = subprocess.run(
-        'cat itermae/data/barseq.sam | '+
-            'itermae '+
-            '-if sam '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "sam"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_sam_two_operations.sam','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_two_operations.sam','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
+##
+## shortread FASTQ, two operation
+##
 #
-# shortread FASTA, two operation
+## As it says on the tin
+#def test_full_shortread_FASTQ_two_operations_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fasta"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_two_operations.fasta','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.fasta','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-
-# As it says on the tin
-def test_full_shortread_fasta_two_operations_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fasta | '+
-            'itermae '+
-            '-if fasta '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fasta"',
-        shell=True,capture_output=True,encoding='utf-8')
-    with open('itermae/data/barseq_two_operations.fasta','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_fasta_two_operations_to_fastq():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fasta | '+
-            'itermae '+
-            '-if fasta '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fastq"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_max_quality_two_operations.fastq','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_max_quality_two_operations.fastq','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_fasta_two_operations_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.fasta | '+
-            'itermae '+
-            '-if fasta '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "sam"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_max_quality_two_operations.sam','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_max_quality_two_operations.sam','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-
+## As it says on the tin
+#def test_full_shortread_FASTQ_two_operations_to_fastq():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fastq"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_two_operations.fastq','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.fastq','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-# shortread raw txt, two operation
+## As it says on the tin
+#def test_full_shortread_FASTQ_two_operations_to_sam():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fastq | '+
+#            'itermae '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "sam"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_two_operations.sam','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.sam','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
 #
-
-# As it says on the tin
-def test_full_shortread_txt_two_operations_to_fasta():
-    results = subprocess.run(
-        'cat itermae/data/barseq.txt | '+
-            'itermae '+
-            '-if txt '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fasta"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fasta','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fasta','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_txt_two_operations_to_fastq():
-    results = subprocess.run(
-        'cat itermae/data/barseq.txt | '+
-            'itermae '+
-            '-if txt '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "fastq"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fastq','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fastq','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
-# As it says on the tin
-def test_full_shortread_txt_two_operations_to_sam():
-    results = subprocess.run(
-        'cat itermae/data/barseq.txt | '+
-            'itermae '+
-            '-if txt '+
-            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
-            '--verbose -of "sam"',
-        shell=True,capture_output=True,encoding='utf-8')
-#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.sam','w') as f:
-#        f.write(results.stdout)
-    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.sam','r') as f:
-        expected_file = f.readlines()
-    for i,j in zip(results.stdout.split('\n'),expected_file):
-        assert str(i) == str(j.rstrip('\n'))
-
+##
+## shortread SAM, two operation
+##
+#
+## As it says on the tin
+#def test_full_shortread_SAM_two_operations_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.sam | '+
+#            'itermae '+
+#            '-if sam '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fasta"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_sam_two_operations.fasta','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.fasta','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_SAM_two_operations_to_fastq():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.sam | '+
+#            'itermae '+
+#            '-if sam '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fastq"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_sam_two_operations.fastq','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.fastq','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_SAM_two_operations_to_sam():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.sam | '+
+#            'itermae '+
+#            '-if sam '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "sam"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_sam_two_operations.sam','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_two_operations.sam','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+##
+## shortread FASTA, two operation
+##
+#
+## As it says on the tin
+#def test_full_shortread_fasta_two_operations_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fasta | '+
+#            'itermae '+
+#            '-if fasta '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fasta"',
+#        shell=True,capture_output=True,encoding='utf-8')
+#    with open('itermae/data/barseq_two_operations.fasta','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_fasta_two_operations_to_fastq():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fasta | '+
+#            'itermae '+
+#            '-if fasta '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fastq"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_max_quality_two_operations.fastq','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_max_quality_two_operations.fastq','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_fasta_two_operations_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.fasta | '+
+#            'itermae '+
+#            '-if fasta '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "sam"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_max_quality_two_operations.sam','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_max_quality_two_operations.sam','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+#
+##
+## shortread raw txt, two operation
+##
+#
+## As it says on the tin
+#def test_full_shortread_txt_two_operations_to_fasta():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.txt | '+
+#            'itermae '+
+#            '-if txt '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fasta"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fasta','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fasta','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_txt_two_operations_to_fastq():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.txt | '+
+#            'itermae '+
+#            '-if txt '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "fastq"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fastq','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.fastq','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
+## As it says on the tin
+#def test_full_shortread_txt_two_operations_to_sam():
+#    results = subprocess.run(
+#        'cat itermae/data/barseq.txt | '+
+#            'itermae '+
+#            '-if txt '+
+#            '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+#            '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+#            '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
+#            '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '+
+#            '--verbose -of "sam"',
+#        shell=True,capture_output=True,encoding='utf-8')
+##    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.sam','w') as f:
+##        f.write(results.stdout)
+#    with open('itermae/data/barseq_max_quality_seq_is_id_two_operations.sam','r') as f:
+#        expected_file = f.readlines()
+#    for i,j in zip(results.stdout.split('\n'),expected_file):
+#        assert str(i) == str(j.rstrip('\n'))
+#
 
 
 
