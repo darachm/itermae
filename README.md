@@ -1,17 +1,16 @@
-# itermae
+# itermae 0.4.2
 
-This is tool that parses FASTQ format reads using patterns. 
-Specifically, it uses fuzzy regular expressions, so patterns that allow some
-degeneracy and using the sequence, not just position, to parse reads.
-Then it rebuilds SAM, FASTQ, or FASTA file streams for piping into other tools
-or into other files.
-
-It is pretty much just a wrapper to apply fuzzy regex from the 
-[`regex`](https://pypi.org/project/regex/)
-to sequences in 
-[`Biopython`](https://pypi.org/project/biopython/) 
-format. That's pretty much it, but it's designed
-to be a flexible command line interface to that, for easy parallelization.
+Command-line utility to apply a series of fuzzy regular expression operations
+to sequences from a variety of formats, then reconstruct a variety of output
+formats from the captured groups -- after applying custom filters on 
+matched group position, length, sequence, and/or quality statistics.
+Reads and makes FASTQ, FASTA, text-file, and SAM (tab-delimited).
+Designed to function with sequence piped in from tools like GNU `parallel`
+to permit light-weight parallelization.
+Matching is handled as strings in 
+[`regex`](https://pypi.org/project/regex/),
+and [`Biopython`](https://pypi.org/project/biopython/) is used to represent,
+slice, and read/output formats.
 
 # Availability, installation, 'installation'
 
@@ -40,9 +39,7 @@ small chunks into the tool, develop operations that match, filter, and extract
 the right groups to assemble the output you want. Then you wrap it it up behind
 `parallel` and feed the whole FASTQ file via `zcat` in on standard in.
 This parallelizes with a small memory footprint (tune the chunk size), then
-you write it out to disk (or stream into another tool?).
-
-Do one thing well, right? That's the aim. Feedback is welcome.
+you write it out to disk (or stream into another tool).
 
 **Tutorial** / **demo**  - there's a jupyter notebook in this root directory
 (`demos_and_tutorial_itermae.ipynb`) and the rendered output HTML.
@@ -51,18 +48,4 @@ There's also some longer runs that are launched by a bash script in
 `profiling_tests`, these generate longer runs for profiling purposes
 with `cProfile` and `snakeviz`.
 
-I believe I'm the only one using this tool, so let me know if you ever try it.
-I'd love to hear about it, and would be very eager to help you use it and
-try to adapt it to work to your purposes. 
-
-Oh, and this is for BASH shells on Linux/Unix boxes ! I have no idea how
-OSX/windows stuff works. Are you unfamiliar with this? If you're at a 
-university, ask your librarian. If you're not, look it up online or use the
-lessons at Software Carpentries. Or tweet at me about it...
-
-# Caution!
-
-The output group formation and filtering is just using `eval`. This gives
-flexibility, but is nowhere near remotely thinking that it would be anywhere
-near anything like secure. So this is for use at the command line on your
-computer, not web-facing or anything of the sort. Be responsible.
+Designed for use in command-line shells on a \*nix machine.
