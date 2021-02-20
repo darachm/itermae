@@ -263,8 +263,12 @@ def reader(
         input_fh = open(input_file,"rU") # rU is read universal line endings
 
     if is_gzipped:
-        with gzip.open(input_fh,"rt") as input_fh_gz:
-            input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
+        if input_file == "STDIN":
+            print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
+                "Or write to file, and point me that-a-way.",file=sys.stderr) 
+            exit(1)
+        input_fh_gz = gzip.open(input_fh,'rt')
+        input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
     else:
         input_seqs = open_appropriate_input_format(input_fh, in_format)
 
@@ -300,6 +304,10 @@ def reader(
             )
 
     input_fh.close()
+    try:
+        input_fh_gz.close()
+    except:
+        pass # means it wasn't opened, I assume
 
     return(0)
 

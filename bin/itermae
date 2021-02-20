@@ -181,6 +181,11 @@ if args.verbose >= 1:
             "    extract groups with regex : '"+str(each[1]),
             file=sys.stderr)
 
+if args.input == "STDIN" and args.gzipped:
+    print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
+        "Or write to a file, and point me that-a-way.",file=sys.stderr) 
+    exit(1)
+
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : ...and with these filters:\n",
         file=sys.stderr)
