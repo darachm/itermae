@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import itermae
 
 import argparse
 import re
@@ -8,7 +7,9 @@ import sys
 import regex
 import time
 import yaml
-import random
+
+sys.path.append('../itermae')
+import itermae
 
 # Using argparse module to define the arguments
 
@@ -118,17 +119,6 @@ parser.add_argument("--config",default=False,
 
 args = parser.parse_args()
 
-# If it's not False, then it should be a path that we can open
-if args.config:
-    with open(args.config,'r') as f:
-        config = yaml.load(f)
-
-# Operations, outputs are read as an array of dicts to keep it ordered.
-operations_array = []
-outputs_array = []
-# Here we read on through to add those on, and complain loudly if someone
-# tries to use our reserved names.
-
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
     if name in reserved_names:
         print("Hey, you can't name a capture group "+
@@ -138,256 +128,339 @@ def check_reserved_name(name,reserved_names=['dummyspacer','input']):
         exit(1)
     return 0
 
-if config:
+# from http://www.bioinformatics.org/sms/iupac.html
+iupac_codes = {
+    'A':'A',
+    'C':'C',
+    'T':'T',
+    'G':'G',
+    'R':'[AG]',
+    'Y':'[CT]',
+    'S':'[GC]',
+    'W':'[AT]',
+    'K':'[GT]',
+    'M':'[AC]',
+    'B':'[CGT]',
+    'D':'[AGT]',
+    'H':'[ACT]',
+    'V':'[ACG]',
+    'N':'[ATCGN]'
+}
 
-    for each in config['operations']:
-        print("Processing taking '"+each['use']+"'. \n",end="",file=sys.stderr)
-        regex_groups = dict()
-        group_order = list()
-        for character, mark in zip(each['pattern'],each['marking']):
-            if mark not in group_order:
-                group_order.append(mark)
-            try:
-                regex_groups[mark] += character
-            except:
-                regex_groups[mark] = character
 
-        regex_string = ''
+def config_from_file(file_path):
+    configuration = {}
 
-        for mark in group_order:
-            if 'name_as' in each['marked_groups'][mark].keys():
-                check_reserved_name(each['marked_groups'][mark]['name_as'])
-            else:
-                each['marked_groups'][mark]['name_as'] = "untitled_"+str(random.randint(1,1e16))
-            print("Found group '"+mark+"' with pattern '"+regex_groups[mark]+"'",end="",file=sys.stderr)
-            try: 
-                if 'repeat_min' not in each['marked_groups'][mark].keys():
-                    each['marked_groups'][mark]['repeat_min'] = each['marked_groups'][mark]['repeat']
-                if 'repeat_max' not in each['marked_groups'][mark].keys():
-                    each['marked_groups'][mark]['repeat_max'] = each['marked_groups'][mark]['repeat']
-                regex_groups[mark] = (regex_groups[mark]+
-                    '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
-                        str(each['marked_groups'][mark]['repeat_max'])+'}'
-                    )
-                print(", repeated between "+
-                    str(each['marked_groups'][mark]['repeat_min'])+
-                    " and "+
-                    str(each['marked_groups'][mark]['repeat_max'])+
-                    " times",end="",file=sys.stderr)
-            except:
-                pass
-            error_array = []
-            try: 
-                error_array.append(
-                    "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
-            except:
-                pass
-            try: 
-                error_array.append(
-                    "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
-            except:
-                pass
-            try: 
-                error_array.append(
-                    "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
-            except:
-                pass
-            try: 
-                error_array.append(
-                    "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
-            except:
-                pass
-            if len(error_array):
-                error_string = "{"+','.join(error_array)+"}"
-            else:
-                error_string = ""
-            print(".\n",end="",file=sys.stderr)
-            regex_string += ("(?<"+
-                each['marked_groups'][mark]['name_as']+
-                ">"+regex_groups[mark]+")"+
-                error_string
-                )
-
-        compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-        operations_array.append( [each['use'], compiled_regex] )
-        print(operations_array)
-            
-
-#    except:
-#        # Failure likely from lack of operations to do
-#        print("Wait a second, I don't understand the operations to be done! "+
-#            "Are there any? Maybe there's small part I'm choking on? Maybe "+
-#            "try adding steps in one at a time in an interactive context with "+
-#            "'--limit' set, to debug easier. Exiting...",file=sys.stderr)
-#        exit(1)
-    
-#            if each.find("<input>") > 0:
-#                print("Hey, you can't name a capture group "+
-#                    "'input', I'm using that! Pick a different name.",
-#                    file=sys.stderr)
-#                exit(1)
-#            # Here, we use the ` > ` to specify the flow of input to
-#            # the regex
-#            (input_string, regex_string) = re.split("\s>\s",each.strip())
-#            compiled_regex = regex.compile(
-#                regex_string.strip(), # We use this regex
-#                regex.BESTMATCH # And we use the BESTMATCH strategy, I think
-#                )
-#            # append that to the operations array
-#            operations_array.append( [input_string.strip(), compiled_regex] )
-#    except:
-#        # Failure likely from lack of operations to do
-#        print("Wait a second, I don't understand the operations to be done! "+
-#            "Are there any? Maybe there's small part I'm choking on? Maybe "+
-#            "try adding steps in one at a time in an interactive context with "+
-#            "'--limit' set, to debug easier. Exiting...",file=sys.stderr)
-#        exit(1)
-
-else:
+    # Verbosely attempt to read it, and I want a hard exit if it's not parsed
     try:
-        for each in args.operation:
-            if each.find("<dummyspacer>") > 0:
-                print("Hey, you can't name a capture group "+
-                    "'dummyspacer', I'm using that! Pick a different name.",
-                    file=sys.stderr)
-                exit(1)
+        with open(args.config,'r') as f:
+            config = yaml.load(f,Loader=yaml.SafeLoader)
+    except:
+        print('I failed to parse the supplied YAML file path name.',
+            file=sys.stderr)
+        exit(1)
+
+    # Looking for verbosity instruction global, if not that then in outputs
+    try:
+        try:
+            verbosity = config['verbosity']
+        except:
+            verbosity = config['output']['verbosity']
+    except:
+        verbosity = 0 # else, just keep it bottled it up and tell no one 0_0
+    configuration['verbosity'] = verbosity
+
+    try:
+        operations_array = []
+        for each in config['operations']:
+            if verbosity >= 1:
+                print("Processing taking '"+each['use']+"'. \n",end="",file=sys.stderr)
+            regex_groups = dict()
+            group_order = list()
+            for character, mark in zip(each['pattern'],each['marking']):
+                if mark not in group_order:
+                    group_order.append(mark)
+                try:
+                    regex_groups[mark] += iupac_codes[character]
+                except:
+                    regex_groups[mark] = iupac_codes[character]
+            regex_string = ''
+            i = 0
+            for mark in group_order:
+                if 'name_as' in each['marked_groups'][mark].keys():
+                    check_reserved_name(each['marked_groups'][mark]['name_as'])
+                else:
+                    each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
+                    i += 1
+                if verbosity >= 1:
+                    print("    Found group '"+mark+"' with pattern '"+regex_groups[mark]+"'",end="",file=sys.stderr)
+                try: 
+                    if 'repeat_min' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_min'] = each['marked_groups'][mark]['repeat']
+                    if 'repeat_max' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_max'] = each['marked_groups'][mark]['repeat']
+                    regex_groups[mark] = (regex_groups[mark]+
+                        '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
+                            str(each['marked_groups'][mark]['repeat_max'])+'}'
+                        )
+                    if verbosity >= 1:
+                        print(", repeated between "+
+                            str(each['marked_groups'][mark]['repeat_min'])+
+                            " and "+
+                            str(each['marked_groups'][mark]['repeat_max'])+
+                            " times",end="",file=sys.stderr)
+                except:
+                    pass
+                error_array = []
+                try: 
+                    error_array.append(
+                        "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
+                except:
+                    pass
+                if len(error_array):
+                    error_string = "{"+','.join(error_array)+"}"
+                else:
+                    error_string = ""
+                if verbosity >= 1:
+                    print(".\n",end="",file=sys.stderr)
+                regex_string += ( "(?<"+
+                    each['marked_groups'][mark]['name_as']+
+                    ">"+regex_groups[mark]+")"+error_string )
+            compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
+            operations_array.append( [each['use'], compiled_regex] )
+    except:
+        print("I failed to build operations array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['operations'] = operations_array
+
+    try:
+        print("Processing output specifications.",file=sys.stderr)
+        output_list = config['output']['list'] # I do need some outputs
+        outputs_array = [] 
+        i = 0 # this is for naming untitled outputs sequentially
+        for each in output_list:
+            if each['id'] is None:
+                each['id'] = 'input.id' # default, the input.id
+            if each['name'] is None:
+                each['name'] = 'untitled_output_'+str(i)
+                i += 1
+            if each['filter'] is None:
+                each['filter'] = 'True' # so will pass if not provided
+            if verbosity >= 1:
+                print("    Parsing output specification of '"+each['name']+"', "+
+                    "ID is '"+each['id']+"', filter outputs it if '"+
+                    each['filter']+"', with sequence derived of '"+
+                    each['seq']+"'.",file=sys.stderr)
+            outputs_array.append( {
+                    'name':each['name'],
+                    'filter':compile('True','<string>','eval',optimize=2),
+                    'id':compile(each['id'],'<string>','eval',optimize=2),
+                    'seq':compile(each['seq'],'<string>','eval',optimize=2)
+                })
+    except:
+        print("I failed to build outputs array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['outputs'] = outputs_array
+
+    try:
+        configuration['input'] = config['input']['from']
+    except:
+        configuration['input'] = 'STDIN'
+    try:
+        configuration['input_format'] = config['input']['format']
+    except:
+        configuration['input_format'] = 'fastq'
+    try:
+        configuration['input_gzipped'] = config['input']['gzipped']
+    except:
+        configuration['input_gzipped'] = False
+
+    try:
+        configuration['output'] = config['output']['to']
+    except:
+        configuration['output'] = 'STDOUT'
+    try:
+        configuration['output_format'] = config['output']['format']
+    except:
+        configuration['output_format'] = 'sam'
+    try:
+        configuration['failed'] = config['output']['failed']
+    except:
+        configuration['failed'] = None
+    try:
+        configuration['report'] = config['output']['report']
+    except:
+        configuration['report'] = None
+
+    return configuration
+
+
+def config_from_args(args_copy):
+    configuration = {}
+
+    verbosity = args_copy.verbose
+    configuration['verbosity'] = verbosity
+
+    try:
+        operations_array = []
+        for each in operations:
+
+            for capture_name in re.findall('<(.*?)>',each):
+                print(capture_name)
+                check_reserved_name(capture_name)
     
-            if each.find("<input>") > 0:
-                print("Hey, you can't name a capture group "+
-                    "'input', I'm using that! Pick a different name.",
-                    file=sys.stderr)
-                exit(1)
-            # Here, we use the ` > ` to specify the flow of input to
-            # the regex
             (input_string, regex_string) = re.split("\s>\s",each.strip())
             compiled_regex = regex.compile(
                 regex_string.strip(), # We use this regex
                 regex.BESTMATCH # And we use the BESTMATCH strategy, I think
                 )
-            # append that to the operations array
             operations_array.append( [input_string.strip(), compiled_regex] )
     except:
-        # Failure likely from lack of operations to do
-        print("Wait a second, I don't understand the operations to be done! "+
-            "Are there any? Maybe there's small part I'm choking on? Maybe "+
-            "try adding steps in one at a time in an interactive context with "+
-            "'--limit' set, to debug easier. Exiting...",file=sys.stderr)
+        print("I failed to build operations array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['operations'] = operations_array
+
+    try:
+        outputs_array = [] 
+        for i in range(len(output_seqs)):
+            if output_ids is None:
+                # or, use the default of input ID
+                outputs_array.append( [
+                        compile("input.id",'<string>','eval',optimize=2), 
+                        compile(output_seqs[i],'<string>','eval',optimize=2) 
+                        ])
+            else:
+                # append that to the outputs array
+                outputs_array.append( [
+                        compile(output_ids[i],'<string>','eval'), 
+                        compile(output_seqs[i],'<string>','eval') 
+                        ])
+    except:
+        print("I failed to build outputs array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['output'] = outputs_array
+    
+    configuration['input'] = args_copy.input
+    configuration['input_gzipped'] = args_copy.gzipped
+    configuration['input_format'] = args_copy.input_format
+ 
+#if args.input == "STDIN" and args.gzipped:
+#    print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
+#        "Or write to a file, and point me that-a-way.",file=sys.stderr) 
+#    exit(1)
+#
+#if configuration['verbosity'] >= 1:
+#    print("\n["+str(time.time())+"] : "+
+#        "I'm reading in a "+args.input_format+" format file, "+
+#        " applying these operations of matching:\n",file=sys.stderr)
+#    for each in operations_array:
+#        print("  - from : "+each[0]+"\n"+
+#            "    extract groups with regex : '"+str(each[1]),
+#            file=sys.stderr)
+#
+#if args.verbose >= 1:
+#    print("\n["+str(time.time())+"] : ...and with these filters:\n",
+#        file=sys.stderr)
+#    try:
+#        for i in args.filter:
+#            print("  - "+i,file=sys.stderr)
+#    except:
+#        print("  ( no filters defined )",file=sys.stderr)
+#
+#if args.verbose >= 1:
+#    print("\n["+str(time.time())+"] : "+
+#        "Then I'm going to construct outputs that look like:\n",
+#        file=sys.stderr)
+#    if args.output_id is None:
+#        oids = ["input.id"]
+#    else:
+#        oids = args.output_id
+#    for oid, oseq in zip(oids,args.output_seq):
+#        print("  - With ID of : "+oid+"\n"+
+#            "    and the sequence is the group(s) : "+oseq,file=sys.stderr)
+#
+#filter_array = []
+## If it's omitted, we believe that means no filter, and we make it True
+## because it gets `eval`'d in the function. 
+#try:
+#    for i in args.filter:
+#        filter_array.append( compile(i,'<string>','eval',optimize=2) )
+#except:
+#    filter_array.append( compile('True','<string>','eval',optimize=2) )
+
+#   if args.verbose >= 1:
+#    print("\n["+str(time.time())+"] : Then, I'm going to write out a "+
+#        args.output_format+" format file to "+
+#        args.output+"",file=sys.stderr)
+#    if args.report is not None:
+#        print("\n["+str(time.time())+"] : and a report to '"+
+#            vars(args)["report"]+".",file=sys.stderr)
+
+
+    return configuration
+
+
+
+if args.config:
+    try: 
+        configuration = config_from_file(args.config)
+    except:
+        print(" 1er nope")
         exit(1)
 
-print(operations_array)
-    
-# Next we build the array of outputs, by combining the named output IDs
-# and seq specifications.
-try:
-    # We need output sequences, so we go through that list, by index
-    for i in range(len(args.output_seq)):
-        if args.output_id is None:
-            # or, use the default of input ID
-            outputs_array.append( [
-                    compile("input.id",'<string>','eval',optimize=2), 
-                    compile(args.output_seq[i],'<string>','eval',optimize=2) 
-                    ])
-        else:
-            # append that to the outputs array
-            outputs_array.append( [
-                    compile(args.output_id[i],'<string>','eval'), 
-                    compile(args.output_seq[i],'<string>','eval') 
-                    ])
-except:
-    # Failure likely from lack of operations to do
-    print("Wait a second, I don't understand the outputs to be done! "+
-        "Are there any? Maybe there's small part I'm choking on? Maybe "+
-        "try adding steps in one at a time in an interactive context with "+
-        "'--limit' set, to debug easier. Exiting...",file=sys.stderr)
-    exit(1)
-
-if args.verbose >= 1:
-    print("\n["+str(time.time())+"] : "+
-        "I'm reading in a "+args.input_format+" format file, "+
-        " applying these operations of matching:\n",file=sys.stderr)
-    for each in operations_array:
-        print("  - from : "+each[0]+"\n"+
-            "    extract groups with regex : '"+str(each[1]),
-            file=sys.stderr)
-
-if args.input == "STDIN" and args.gzipped:
-    print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
-        "Or write to a file, and point me that-a-way.",file=sys.stderr) 
-    exit(1)
-
-if args.verbose >= 1:
-    print("\n["+str(time.time())+"] : ...and with these filters:\n",
-        file=sys.stderr)
+else:
     try:
-        for i in args.filter:
-            print("  - "+i,file=sys.stderr)
+        configuration = config_from_args(args)
     except:
-        print("  ( no filters defined )",file=sys.stderr)
+        print("er nope")
+        exit(1)
 
-if args.verbose >= 1:
-    print("\n["+str(time.time())+"] : "+
-        "Then I'm going to construct outputs that look like:\n",
-        file=sys.stderr)
-    if args.output_id is None:
-        oids = ["input.id"]
-    else:
-        oids = args.output_id
-    for oid, oseq in zip(oids,args.output_seq):
-        print("  - With ID of : "+oid+"\n"+
-            "    and the sequence is the group(s) : "+oseq,file=sys.stderr)
+if configuration['verbosity'] >= 1:
+    print('Configured as',file=sys.stderr)
+    print('    '+configuration['input'],file=sys.stderr)
+    print('    '+configuration['input_format'],file=sys.stderr)
+    print('    '+str(configuration['input_gzipped']),file=sys.stderr)
+    print('    '+configuration['output'],file=sys.stderr)
+    print('    '+configuration['output_format'],file=sys.stderr)
+    print('    '+configuration['failed'],file=sys.stderr)
+    print('    '+configuration['report'],file=sys.stderr)
+    print('    '+str(configuration['verbosity']),file=sys.stderr)
+    print(configuration['operations'],file=sys.stderr)
+    print(configuration['outputs'],file=sys.stderr)
 
-filter_array = []
-# If it's omitted, we believe that means no filter, and we make it True
-# because it gets `eval`'d in the function. 
-try:
-    for i in args.filter:
-        filter_array.append( compile(i,'<string>','eval',optimize=2) )
-except:
-    filter_array.append( compile('True','<string>','eval',optimize=2) )
-
-if args.verbose >= 1:
-    print("\n["+str(time.time())+"] : Then, I'm going to write out a "+
-        args.output_format+" format file to "+
-        args.output+"",file=sys.stderr)
-    if args.report is not None:
-        print("\n["+str(time.time())+"] : and a report to '"+
-            vars(args)["report"]+".",file=sys.stderr)
-
-# I should implement the below ... but really?
-#    # checking file existance for outputs, zipping together the 
-#    # output base with each of the three. 
-#    exit_flag = 0
-#    for each in zip( [vars(args)["output-base"]]*20,            \
-#                    ["_fail.fastq", "_pass.fastq",              \
-#                        "_report.fastq", "_report.csv" ] ):
-#        # At this stage, the tuple is joined to make the filename
-#        this_path = ''.join(each)
-#        # If the write-report flag is off and the path is the report,
-#        # then this won't trip True for that path existing
-#import os.path
-#        if os.path.isfile(this_path) and              \
-#                not( not(args.write_report) and       \
-#                    (this_path.find("_report")>=0) ):
-#            print("\n"+"["+str(time.time())+"]"+" : "+"File "+this_path+
-#                " exits, so I'm quitting before you ask me to do "+
-#                "something you might regret.")
-#            exit_flag = 1
-#    if exit_flag == 1:
-#        exit(1)
-
-# We begin
 if args.verbose >= 1:
     print("\n["+str(time.time())+"] : BEGIN RUNNING",file=sys.stderr)
 
 itermae.reader(
-    input_file=vars(args)["input"], is_gzipped=args.gzipped,
-    operations_array=operations_array, filters=filter_array, 
-    outputs_array=outputs_array,
-    in_format=args.input_format.lower(),
-    out_format=args.output_format.lower(),
-    output_file=vars(args)["output"],failed_file=vars(args)["failed"],
-    report_file=vars(args)["report"],
-    verbosity=args.verbose
+    input_file=configuration['input'],
+    in_format=configuration['input_format'],
+    is_gzipped=configuration['input_gzipped'],
+    output_file=configuration['output'],
+    out_format=configuration['output_format'],
+    failed_file=configuration['failed'],
+    report_file=configuration['report'],
+    operations_array=configuration['operations'],
+    outputs_array=configuration['outputs'],
+    verbosity=configuration['verbosity']
     )
 
 if args.verbose >= 1:

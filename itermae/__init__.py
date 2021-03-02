@@ -243,7 +243,7 @@ def open_appropriate_input_format(in_fh, format_name):
 
 def reader(
         input_file, is_gzipped, 
-        operations_array, filters , outputs_array,
+        operations_array, outputs_array,
         in_format, out_format, output_file, failed_file, report_file,
         verbosity
         ):
