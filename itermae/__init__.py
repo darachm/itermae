@@ -224,6 +224,7 @@ def read_txt_file(fh):
         seq = i.rstrip()
         yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq )
 
+
 def open_appropriate_input_format(in_fh, format_name):
     if   format_name == 'fastq':
         return SeqIO.parse(in_fh, format_name)
@@ -239,6 +240,31 @@ def open_appropriate_input_format(in_fh, format_name):
             "SeqIO, and we will find out together if that works.",
             file=sys.stderr) 
         return SeqIO.parse(in_fh, format_name)
+
+
+def open_input_fh(file_string,gzipped=False):
+    if file_string.upper() == 'STDIN':
+        if gzipped:
+            print("I can't handle gzipped inputs on STDIN ! "+
+                "You shouldn't see this error, it shoulda been caught in "+
+                "the launcher script.",file=sys.stderr) 
+            exit(1)
+        else:
+            return open(sys.stdin,'rt')
+    else:
+        if gzipped:
+            return gzip.open(input_file,'rt',encoding='ascii')
+        else:
+            return open(input_file,'rt')
+
+
+def open_output_fh(file_string):
+    if file_string.upper() == 'STDOUT':
+        return open(sys.stdout,'a')
+    elif file_string.upper() == 'STDERR':
+        return open(sys.stderr,'a')
+    else:
+        return open(file_string,'a')
 
 
 def reader(
@@ -258,58 +284,22 @@ def reader(
     #
 
     # Input
-    if input_file == "STDIN": # STDIN is default
-        if is_gzipped: # sys.stdin is opened as txt, not bytes
-            print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
-                "Or write to file, and point me that-a-way. \n\n"+
-                "You shouldn't see this error, it shoulda been caught in the "+
-                "launcher script.",file=sys.stderr) 
-            exit(1)
-        input_text = sys.stdin
-    else:
-        if is_gzipped:
-            input_text = gzip.open(input_file,'rt',encoding='ascii')
-        else:
-            input_text = open(input_file,"rt") 
-
-    input_seqs = open_appropriate_input_format(input_text, in_format)
-
-#    # Input
-#    if input_file == "STDIN": # STDIN is default
-#        if is_gzipped: # sys.stdin is opened as txt, not bytes
-#            print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
-#                "Or write to file, and point me that-a-way. \n\n"+
-#                "You shouldn't see this error, it shoulda been caught in the "+
-#                "launcher script.",file=sys.stderr) 
-#            exit(1)
-#        input_fh = sys.stdin
-#        input_seqs = open_appropriate_input_format(input_fh, in_format)
-#    else:
-#        input_fh = open(input_file,"rb") 
-#        if is_gzipped:
-#            input_fh_gz = gzip.open(input_fh,'rt',encoding='ascii')
-#            input_seqs = open_appropriate_input_format(input_fh_gz, in_format)
-#        else:
-#            input_seqs = open_appropriate_input_format(
-#                    io.TextIOWrapper(input_fh),
-#                    in_format)
+    input_seqs = open_appropriate_input_format(
+            open_input_fh(input_file,is_gzipped),
+            in_format)
 
     # Outputs - passed records, failed records, report file
-    if output_file == "STDOUT":
-        output_fh = sys.stdout
-    else: # If you've specified a filepath, then that's here
-        output_fh = open(output_file,"a")
-    # If no failed file specified, then we're just ignoring it
-    if failed_file is None:
+    output_fh = open_output_fh(output_file)
+
+    try:
+        failed_fh = open_output_fh(failed_file)
+    except:
         failed_fh = None
-    # But if specified, then it gets written
-    else:
-        failed_fh = open(failed_file,"a")
-    # Same for optional report
-    if report_file == None:
+
+    try:
+        report_fh = open_output_fh(report_file)
+    except:
         report_fh = None
-    else:
-        report_fh = open(report_file,"a")
 
     # Do the chop-ing...
     for each_seq in input_seqs:

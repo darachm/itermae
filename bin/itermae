@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import argparse
 import re
 import sys
@@ -15,43 +14,36 @@ import itermae
 
 # Name and description of this program
 parser = argparse.ArgumentParser(description=""+
-    "itermae - iteratively chop up sequences using fuzzy regular expressions"+
-    "\n\n"+
+    "itermae - iteratively chop up sequences using fuzzy regular expressions. "+
     "There is no parallelization internal to this script, so for practical "+
     "performance you should use multiple files or stream in chunks via "+
     "STDIN. I recommend you use the later, with GNU parallel, see examples "+
     "in the README.")
 
 # Input determination 
-parser.add_argument("--input",default="STDIN",
+parser.add_argument("-i","--input",default="STDIN",
     help="Where the input reads are. The default is standard input "+
-        "( STDIN ), but this can also be a filepath to read. ")
+        "( 'STDIN' ), but this can also be a filepath to read. ")
 # Is it gzip'd ?
 parser.add_argument("-z","--gzipped",action="store_true",
-    help="If the input is gzipped.")
+    help="Use this flag if the input is a gzipped file.")
 # Input format
 parser.add_argument("-if","--input-format",default='fastq',
     help="What format the input is. Default is 'FASTQ'. I expect this, or "+
-        "'SAM', 'FASTA', or 'txt' formats. "+
-        "Anything other than 'SAM' and 'txt' are handled by BioPython SeqIO, "+
-        "so it *should* read anything that can read. "+
-        "'SAM' uses a custom function that loses the input tags, but uses the "+
-        "ID and quality. "+
-        "'txt' means only one sequence per line, and "+
-        "sets the sequence as sequence ID and PHRED qualities as 40.")
+        "'SAM', 'FASTA', or 'txt', case insensitive.")
 
 # Output determination
 parser.add_argument("--output",default="STDOUT",
     help="Where to output matches to. The recommended default is standard out "+
-        "( STDOUT ), but this can also be a filepath to write. ")
+        "( 'STDOUT' ), but this can also be a filepath to write. ")
 parser.add_argument("-of","--output-format",default='sam',
     help="What format the output should be in. Default is an unmapped SAM "+
         "('SAM'), also available are 'FASTQ' and 'FASTA', case insensitive.")
-parser.add_argument("--failed",default=None,
-    help="Optional filepath for writing a file containing reads that failed "+
-        "at any stage, like matching, filtering, or forming outputs. Also "+
-        "available is specifying 'STDOUT'.")
-parser.add_argument("--report",default=None,
+parser.add_argument("-f","--failed",default=None,
+    help="Optional filepath for writing a file passing-through the reads that "+
+        "failed at any stage of matching, filtering, or forming outputs. Can "+
+        "also be directed to 'STDOUT' or 'STDERR'.")
+parser.add_argument("-r","--report",default=None,
     help="Optional filepath for writing a report of read-level statistics. "+
         "This is heavy disk usage, but useful for debugging runs with a "+
         "limit (see '--limit') set.")
