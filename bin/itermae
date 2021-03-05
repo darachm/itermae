@@ -28,15 +28,15 @@ parser.add_argument("-i","--input",default="STDIN",
 parser.add_argument("-z","--gzipped",action="store_true",
     help="Use this flag if the input is a gzipped file.")
 # Input format
-parser.add_argument("-if","--input-format",default='fastq',
+parser.add_argument("--input-format",default='fastq',
     help="What format the input is. Default is 'FASTQ'. I expect this, or "+
         "'SAM', 'FASTA', or 'txt', case insensitive.")
 
 # Output determination
-parser.add_argument("--output",default="STDOUT",
+parser.add_argument("-o","--output",default="STDOUT",
     help="Where to output matches to. The recommended default is standard out "+
         "( 'STDOUT' ), but this can also be a filepath to write. ")
-parser.add_argument("-of","--output-format",default='sam',
+parser.add_argument("--output-format",default='sam',
     help="What format the output should be in. Default is an unmapped SAM "+
         "('SAM'), also available are 'FASTQ' and 'FASTA', case insensitive.")
 parser.add_argument("-f","--failed",default=None,
@@ -58,7 +58,7 @@ parser.add_argument("-v","--verbose",action="count",default=0,
 
 ### CLI operation and output specification
 # Operations
-parser.add_argument("-o","--operation",action="append",
+parser.add_argument("-m","--match",action="append",
     help="The operation of matching and extracting. For details about syntax, "+
         "please refer to the README, documentation, and tutorials, and the "+
         "regex module documentation about writing fuzzy regexes. "+
@@ -72,18 +72,9 @@ parser.add_argument("-o","--operation",action="append",
         "Importantly, all input sequences are converted to uppercase, so "+
         "write all regex in uppercase. The alphabet is unrestricted but "+
         "untested beyond ATCGN.")
-# Filter specification
-parser.add_argument("-f","--filter",action="append",
-    help="Filters to prevent output of reads that do not pass a criteria. "+
-        "These must evaluate to True or False (in python), and can use "+
-        "some attributes of the matches or matched groups. The 'statistics' "+
-        "package is loaded to permit using summary statistics of these "+
-        "properties. For examples, "+
-        "'umi.length == 5', 'statistics.mean(barcode.quality)',  "+
-        "'sample_barcode == \"TTCAC\"'. See tutorial/documentation for more.")
 
 # Outputs
-parser.add_argument("-oid","--output-id",action="append",
+parser.add_argument("-oi","--output-id",action="append",
     help="Each specification of record IDs to output, per read. "+
         "These should evaluate to a string in python, and you can access "+
         "properties of the input and matched groups such as 'input.id' or "+
@@ -92,8 +83,7 @@ parser.add_argument("-oid","--output-id",action="append",
         "Multiple arguments of this can be supplied, will be output in "+
         "the same file, and if output in SAM will have a tag 'IE:Z' "+
         "specifying which output it is.")
-
-parser.add_argument("-oseq","--output-seq",action="append",
+parser.add_argument("-os","--output-seq",action="append",
     help="Each specification of record sequences to output, per read. "+
         "This must be in the same order as the record IDs, as they are "+
         "paired. This is evaluated to form a BioPython SeqRecords, so "+
@@ -102,6 +92,16 @@ parser.add_argument("-oseq","--output-seq",action="append",
         "sequence of these three groups together. "+
         "'dummyspacer' is also available to insert an 'X' for "+
         "use in later parsing.")
+parser.add_argument("-of","--output-filter",action="append",
+    help="Filters to prevent output of reads that do not pass a criteria. "+
+        "These must evaluate to True or False (in python), and can use "+
+        "some attributes of the matches or matched groups. The 'statistics' "+
+        "package is loaded to permit using summary statistics of these "+
+        "properties. For examples, "+
+        "'umi.length == 5', 'statistics.mean(barcode.quality)',  "+
+        "'sample_barcode == \"TTCAC\"'. See tutorial/documentation for more. "+
+        "Define in same order as the output ids and seqs. "+
+        "If less than number of outputs, then extended across all.")
 
 parser.add_argument("--config",default=False,
     help="Optional config file. If specified, overrules all other relevant "+
