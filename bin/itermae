@@ -10,161 +10,6 @@ import yaml
 sys.path.append('../itermae')
 import itermae
 
-# Using argparse module to define the arguments
-
-# Name and description of this program
-parser = argparse.ArgumentParser(description=""+
-    "itermae - iteratively chop up sequences using fuzzy regular expressions. ",
-    formatter_class=argparse.RawTextHelpFormatter,
-    add_help=False)
-
-parser_config = parser.add_argument_group('Configuration file (optional)')
-parser_config.add_argument("--config",default=False,
-    help="File path to the config file. "+
-        "If specified, overrules all other relevant arguments. "+
-        "See examples/docs.")
-
-parser_input = parser.add_argument_group('Defining input sources')
-parser_input.add_argument("-i","--input",default="STDIN",
-    help="""\
-Specify where the input reads are from. This can 
-be a file path, but the suggested default is 
-standard input ( 'STDIN' ).""")
-parser_input.add_argument("-z","--gzipped",action="store_true",
-    help="""\
-Use this flag if the input is a gzipped file.""")
-parser_input.add_argument("--input-format",default='fastq',
-    help="""
-Specify what format the input is. Default is 
-'FASTQ'. I expect this, or 'SAM', 'FASTA', or 
-'txt'. Case insensitive.""")
-
-parser_output = parser.add_argument_group('Defining where to output')
-parser_output.add_argument("-o","--output",default="STDOUT",
-    help="""\
-Specify where to output successful matched 
-groups to. The recommended default is standard 
-out ( 'STDOUT' ), but this can also be a 
-filepath to write.""")
-parser_output.add_argument("--output-format",default='sam',
-    help="""\
-Specify what format the output should be in. 
-Default is an unmapped SAM ('SAM'), also 
-available are 'FASTQ' and 'FASTA', case 
-insensitive.""")
-parser_output.add_argument("-f","--failed",default=None,
-    help="""\
-Optional filepath for passing-through the reads 
-that failed at any stage of matching, filtering,
-or forming outputs. Can also be directed to 
-'STDOUT' or 'STDERR'.""")
-parser_output.add_argument("-r","--report",default=None,
-    help="""\
-Optional filepath for writing a report of 
-read-level statistics. This is a large 
-inefficient output, but useful for debugging by 
-using with a small subset of the data. 
-(ex: 'head -n 10000 file.fq | tail -n 100' )""")
-
-parser_match = parser.add_argument_group('Matches')
-parser_match.add_argument("-m","--match",action="append",
-    help="""\
-Specify what is being matched against, the 
-regular expression, and what groups to extract.
-Format example: 
-
-'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'
-
-If no input group is specified on the left of a
-' > ' delimiter, then I assume you mean the raw 
-input sequence (ie 'input'). This, and 
-'dummyspacer' are reserved names for groups (see
-docs). Each match is done in the order you 
-specify, so later matches can use previous 
-matching groups as inputs (like 'inputGroup' 
-in the above example). Importantly, all input 
-sequences are converted to uppercase, so write 
-all regex in uppercase. 
-
-For more details, please refer to the README, 
-documentation, and tutorials, and the regex 
-module documentation.""")
-
-parser_groups = parser.add_argument_group(
-    'Define groups output',
-    """\
-Each ID, sequence, and filter is grouped together used in order, 
-so the first ID is used with the first sequence and the first
-filter -- unless there is only one, in which case it is recycled
-for all groups output.
-""")
-parser_groups.add_argument("-oi","--output-id",action="append",
-    help="""\
-The ID field of an output. These should evaluate
-to a string in Python. You can build this by 
-concatenating together parts of the matched 
-groups, such as:
-
-'input.id+\"_\"+umi.seq' 
-
-to append the index sequence to the input's ID.""")
-parser_groups.add_argument("-os","--output-seq",action="append",
-    help="""\
-The sequence of an output. This is evaluated to
-form a BioPython SeqRecord, so can be assembled 
-by combining the names of matched groups. 
-For example:
-
-'sample+barcode+umi'
-
-would append the sequence of these three groups 
-together. Group 'dummyspacer' is also available 
-to insert an 'X' into the sequence for 
-subsequent parsing.""")
-parser_groups.add_argument("-of","--output-filter",action="append",
-    help="""\
-Define a filter that must be true in order to
-output this group. This must evaluate to True or 
-False (in python), and can use some attributes 
-of the matches or matched groups.  For example: 
-
-'umi.length == 5 & statistics.mean(barcode.quality) >= 30'
-
-will only output when the matched UMI is 5 bases
-and the mean quality of the barcode match is more
-than 30. While
-
-'sample_barcode == \"TTCAC\"'
-
-will only output when the sample_barcode group is
-exactly that sequence. 
-
-See tutorial/documentation for details and more
-examples. 
-
-If there is only one filter defined, it is 
-recycled to filter for all output groups.""")
-
-parser_misc = parser.add_argument_group('')
-parser_misc.add_argument("-v","--verbose",action="count",default=0,
-    help="""\
-Level of information to pipe out to STDERR. 
-  Adding none means itermae runs silently.
-  -v prints setup messages and start-stop messsages.
-  -v -v also prints read-level details.
-  -v -v -v also prints match-level details.""")
-parser_misc.add_argument("-h","--help",action="store_true",default=False)
-
-### Parse the arguments, turn them into a configuration object, report that
-
-args = parser.parse_args()
-
-# Necessary since I disabled the auto-'help' argument so that it wouldn't
-# print as part of an 'optional' header
-if args.help:
-    parser.print_help()
-    exit(1)
-
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
     if name in reserved_names:
         print("Hey, you can't name a capture group "+
@@ -174,8 +19,9 @@ def check_reserved_name(name,reserved_names=['dummyspacer','input']):
         exit(1)
     return 0
 
+
 # from http://www.bioinformatics.org/sms/iupac.html
-iupac_codes = {
+iupac_codes = { # only used for the configuration file input!
     'A':'A',
     'C':'C',
     'T':'T',
@@ -315,7 +161,7 @@ def config_from_file(file_path):
                     each['marked_groups'][mark]['name_as']+
                     ">"+regex_groups[mark]+")"+error_string )
             compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-            matches_array.append( [each['use'], compiled_regex] )
+            matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
     except:
         print("I failed to build matches array from the arguments supplied.",
             file=sys.stderr)
@@ -356,7 +202,7 @@ def config_from_file(file_path):
         print("I failed to build outputs array from the arguments supplied.",
             file=sys.stderr)
         exit(1)
-    configuration['outputs'] = outputs_array
+    configuration['output_groups'] = outputs_array
 
     try:
         configuration['input'] = config['input']['from']
@@ -410,141 +256,273 @@ def config_from_args(args_copy):
                 regex_string.strip(), # We use this regex
                 regex.BESTMATCH # And we use the BESTMATCH strategy, I think
                 )
-            matches_array.append( [input_string.strip(), compiled_regex] )
+            matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
     except:
         print("I failed to build matches array from the arguments supplied.",
             file=sys.stderr)
         exit(1)
     configuration['matches'] = matches_array
 
+    # Adding in defaults
+    if args_copy.output_id is None:
+        args_copy.output_id = ['input.id']
+    if args_copy.output_filter is None:
+        args_copy.output_filter = [True]
+
+    # Normalizing all singletons to same length
+    maximum_number_of_outputs = max(
+        [len(args_copy.output_id),
+        len(args_copy.output_seq),
+        len(args_copy.output_filter)]
+    )
+    if len(args_copy.output_id) == 1:
+        args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
+    if len(args_copy.output_seq) == 1:
+        args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
+    if len(args_copy.output_filter) == 1:
+        args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
+
+    if not len(args_copy.output_id) == len(args_copy.output_seq) == len(args_copy.output_filter):
+        print("The output IDs, seqs, and filters are of unequal sizes. "+
+            "Make them equal, or only define one (and it will be reused "+
+            "across all.",file=sys.stderr)
+        exit(1)
+
     try:
         outputs_array = [] 
-        for i in range(len(output_seqs)):
-            if output_ids is None:
-                # or, use the default of input ID
-                outputs_array.append( [
-                        compile("input.id",'<string>','eval',optimize=2), 
-                        compile(output_seqs[i],'<string>','eval',optimize=2) 
-                        ])
-            else:
-                # append that to the outputs array
-                outputs_array.append( [
-                        compile(output_ids[i],'<string>','eval'), 
-                        compile(output_seqs[i],'<string>','eval') 
-                        ])
+        for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
+            outputs_array.append(
+                {   'id': compile(idz,'<string>','eval'), 
+                    'seq': compile(seqz,'<string>','eval'), 
+                    'filter': compile(filterz,'<string>','eval')
+                })
     except:
         print("I failed to build outputs array from the arguments supplied.",
             file=sys.stderr)
         exit(1)
-    configuration['output'] = outputs_array
+    configuration['output_groups'] = outputs_array
     
     configuration['input'] = args_copy.input
     configuration['input_gzipped'] = args_copy.gzipped
     configuration['input_format'] = args_copy.input_format
+    configuration['output'] = args_copy.output
+    configuration['output_format'] = args_copy.output_format
+    configuration['failed'] = args_copy.failed
+    configuration['report'] = args_copy.report
  
-#if args.input == "STDIN" and args.gzipped:
-#    print("I can't handle gzipped inputs on STDIN ! Un-gzip for me. "+
-#        "Or write to a file, and point me that-a-way.",file=sys.stderr) 
-#    exit(1)
-#
-#if configuration['verbosity'] >= 1:
-#    print("\n["+str(time.time())+"] : "+
-#        "I'm reading in a "+args.input_format+" format file, "+
-#        " applying these operations of matching:\n",file=sys.stderr)
-#    for each in operations_array:
-#        print("  - from : "+each[0]+"\n"+
-#            "    extract groups with regex : '"+str(each[1]),
-#            file=sys.stderr)
-#
-#if args.verbose >= 1:
-#    print("\n["+str(time.time())+"] : ...and with these filters:\n",
-#        file=sys.stderr)
-#    try:
-#        for i in args.filter:
-#            print("  - "+i,file=sys.stderr)
-#    except:
-#        print("  ( no filters defined )",file=sys.stderr)
-#
-#if args.verbose >= 1:
-#    print("\n["+str(time.time())+"] : "+
-#        "Then I'm going to construct outputs that look like:\n",
-#        file=sys.stderr)
-#    if args.output_id is None:
-#        oids = ["input.id"]
-#    else:
-#        oids = args.output_id
-#    for oid, oseq in zip(oids,args.output_seq):
-#        print("  - With ID of : "+oid+"\n"+
-#            "    and the sequence is the group(s) : "+oseq,file=sys.stderr)
-#
-#filter_array = []
-## If it's omitted, we believe that means no filter, and we make it True
-## because it gets `eval`'d in the function. 
-#try:
-#    for i in args.filter:
-#        filter_array.append( compile(i,'<string>','eval',optimize=2) )
-#except:
-#    filter_array.append( compile('True','<string>','eval',optimize=2) )
-
-#   if args.verbose >= 1:
-#    print("\n["+str(time.time())+"] : Then, I'm going to write out a "+
-#        args.output_format+" format file to "+
-#        args.output+"",file=sys.stderr)
-#    if args.report is not None:
-#        print("\n["+str(time.time())+"] : and a report to '"+
-#            vars(args)["report"]+".",file=sys.stderr)
-
-
     return configuration
 
 
-
-if args.config:
-    try: 
-        configuration = config_from_file(args.config)
-    except:
-        print(" 1er nope")
+if __name__ == '__main__':
+    ### Using argparse module to define the arguments
+    
+    # Name and description of this program
+    parser = argparse.ArgumentParser(description=""+
+        "itermae - iteratively chop up sequences using fuzzy regular expressions. ",
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False)
+    
+    parser_config = parser.add_argument_group('Configuration file (optional)')
+    parser_config.add_argument("--config",default=False,
+        help="File path to the config file. "+
+            "If specified, overrules all other relevant arguments. "+
+            "See examples/docs.")
+    
+    parser_input = parser.add_argument_group('Defining input sources')
+    parser_input.add_argument("-i","--input",default="STDIN",
+        help="""\
+    Specify where the input reads are from. This can 
+    be a file path, but the suggested default is 
+    standard input ( 'STDIN' ).""")
+    parser_input.add_argument("-z","--gzipped",action="store_true",
+        help="""\
+    Use this flag if the input is a gzipped file.""")
+    parser_input.add_argument("--input-format",default='fastq',
+        help="""
+    Specify what format the input is. Default is 
+    'FASTQ'. I expect this, or 'SAM', 'FASTA', or 
+    'txt'. Case insensitive.""")
+    
+    parser_output = parser.add_argument_group('Defining where to output')
+    parser_output.add_argument("-o","--output",default="STDOUT",
+        help="""\
+    Specify where to output successful matched 
+    groups to. The recommended default is standard 
+    out ( 'STDOUT' ), but this can also be a 
+    filepath to write.""")
+    parser_output.add_argument("--output-format",default='sam',
+        help="""\
+    Specify what format the output should be in. 
+    Default is an unmapped SAM ('SAM'), also 
+    available are 'FASTQ' and 'FASTA', case 
+    insensitive.""")
+    parser_output.add_argument("-f","--failed",default=None,
+        help="""\
+    Optional filepath for passing-through the reads 
+    that failed at any stage of matching, filtering,
+    or forming outputs. Can also be directed to 
+    'STDOUT' or 'STDERR'.""")
+    parser_output.add_argument("-r","--report",default=None,
+        help="""\
+    Optional filepath for writing a report of 
+    read-level statistics. This is a large 
+    inefficient output, but useful for debugging by 
+    using with a small subset of the data. 
+    (ex: 'head -n 10000 file.fq | tail -n 100' )""")
+    
+    parser_match = parser.add_argument_group('Matches')
+    parser_match.add_argument("-m","--match",action="append",
+        help="""\
+    Specify what is being matched against, the 
+    regular expression, and what groups to extract.
+    Format example: 
+    
+    'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'
+    
+    If no input group is specified on the left of a
+    ' > ' delimiter, then I assume you mean the raw 
+    input sequence (ie 'input'). This, and 
+    'dummyspacer' are reserved names for groups (see
+    docs). Each match is done in the order you 
+    specify, so later matches can use previous 
+    matching groups as inputs (like 'inputGroup' 
+    in the above example). Importantly, all input 
+    sequences are converted to uppercase, so write 
+    all regex in uppercase. 
+    
+    For more details, please refer to the README, 
+    documentation, and tutorials, and the regex 
+    module documentation.""")
+    
+    parser_groups = parser.add_argument_group(
+        'Define groups output',
+        """\
+    Each ID, sequence, and filter is grouped together used in order, 
+    so the first ID is used with the first sequence and the first
+    filter -- unless there is only one, in which case it is recycled
+    for all groups output.
+    """)
+    parser_groups.add_argument("-oi","--output-id",action="append",
+        help="""\
+    The ID field of an output. These should evaluate
+    to a string in Python. You can build this by 
+    concatenating together parts of the matched 
+    groups, such as:
+    
+    'input.id+\"_\"+umi.seq' 
+    
+    to append the index sequence to the input's ID.""")
+    parser_groups.add_argument("-os","--output-seq",action="append",
+        help="""\
+    The sequence of an output. This is evaluated to
+    form a BioPython SeqRecord, so can be assembled 
+    by combining the names of matched groups. 
+    For example:
+    
+    'sample+barcode+umi'
+    
+    would append the sequence of these three groups 
+    together. Group 'dummyspacer' is also available 
+    to insert an 'X' into the sequence for 
+    subsequent parsing.""")
+    parser_groups.add_argument("-of","--output-filter",action="append",
+        help="""\
+    Define a filter that must be true in order to
+    output this group. This must evaluate to True or 
+    False (in python), and can use some attributes 
+    of the matches or matched groups.  For example: 
+    
+    'umi.length == 5 & statistics.mean(barcode.quality) >= 30'
+    
+    will only output when the matched UMI is 5 bases
+    and the mean quality of the barcode match is more
+    than 30. While
+    
+    'sample_barcode == \"TTCAC\"'
+    
+    will only output when the sample_barcode group is
+    exactly that sequence. 
+    
+    See tutorial/documentation for details and more
+    examples. 
+    
+    If there is only one filter defined, it is 
+    recycled to filter for all output groups.""")
+    
+    parser_misc = parser.add_argument_group('')
+    parser_misc.add_argument("-v","--verbose",action="count",default=0,
+        help="""\
+    Level of information to pipe out to STDERR. 
+      Adding none means itermae runs silently.
+      -v prints setup messages and start-stop messsages.
+      -v -v also prints read-level details.
+      -v -v -v also prints match-level details.""")
+    parser_misc.add_argument("-h","--help",action="store_true",default=False)
+    
+    # Parse the arguments, turn them into a configuration object, report that
+    args = parser.parse_args()
+    
+    # Necessary since I disabled the auto-'help' argument so that it wouldn't
+    # print as part of an 'optional' header
+    if args.help:
+        parser.print_help()
         exit(1)
-
-else:
-    try:
-        configuration = config_from_args(args)
-    except:
-        print("er nope")
-        exit(1)
-
-if configuration['verbosity'] >= 1:
-    print('Configured as',file=sys.stderr)
-    print('    '+configuration['input'],file=sys.stderr)
-    print('    '+configuration['input_format'],file=sys.stderr)
-    print('    '+str(configuration['input_gzipped']),file=sys.stderr)
-    print('    '+configuration['output'],file=sys.stderr)
-    print('    '+configuration['output_format'],file=sys.stderr)
-    print('    '+configuration['failed'],file=sys.stderr)
-    print('    '+configuration['report'],file=sys.stderr)
-    print('    '+str(configuration['verbosity']),file=sys.stderr)
-    print(configuration['matches'],file=sys.stderr)
-    print(configuration['outputs'],file=sys.stderr)
-
-if args.verbose >= 1:
-    print("\n["+str(time.time())+"] : BEGIN RUNNING",file=sys.stderr)
-
-itermae.reader(
-    input_file=configuration['input'],
-    in_format=configuration['input_format'],
-    is_gzipped=configuration['input_gzipped'],
-    output_file=configuration['output'],
-    out_format=configuration['output_format'],
-    failed_file=configuration['failed'],
-    report_file=configuration['report'],
-    matches_array=configuration['matches'],
-    outputs_array=configuration['outputs'],
-    verbosity=configuration['verbosity']
-    )
-
-if args.verbose >= 1:
-    print("\n"+"["+str(time.time())+"]"+" : "+
-        "All worked 'till the work is done --- or some fatal error.",
-        file=sys.stderr)
-
-exit(0)
+    
+    if args.config:
+        try: 
+            configuration = config_from_file(args.config)
+        except:
+            print("Configuring from that file '"++"' failed.",file=sys.stderr)
+            exit(1)
+    else:
+        try:
+            configuration = config_from_args(args)
+        except:
+            print("Configuring from arguments failed.",file=sys.stderr)
+            exit(1)
+    
+    if configuration['verbosity'] >= 1:
+        print('Configured as',file=sys.stderr)
+        print('    input from '+configuration['input'],file=sys.stderr)
+        print('    of format '+configuration['input_format'],file=sys.stderr)
+        print('    is gzipped? '+str(configuration['input_gzipped']),file=sys.stderr)
+        print('    outputing to '+configuration['output'],file=sys.stderr)
+        print('    in format '+configuration['output_format'],file=sys.stderr)
+        print('    failed going to '+str(configuration['failed']),file=sys.stderr)
+        print('    report going to '+str(configuration['report']),file=sys.stderr)
+        print('    with verbosity at '+str(configuration['verbosity']),file=sys.stderr)
+        print('    doing these matches:',file=sys.stderr)
+        for each in configuration['matches']:
+            print('        input: '+each['input'],file=sys.stderr)
+            print('        regex: '+str(each['regex']),file=sys.stderr)
+        print('    writing these outputs:',file=sys.stderr)
+        print('    ***NOTE*** these are compiled code objects, and so should '+
+            'be uninterpretable. Sorry.',file=sys.stderr)
+        for each in configuration['output_groups']:
+            print('        id: '+str(each['id']),file=sys.stderr)
+            print('        seq: '+str(each['seq']),file=sys.stderr)
+            print('        filter: '+str(each['filter']),file=sys.stderr)
+    
+    if args.verbose >= 1:
+        print("\n["+str(time.time())+"] : Begin running the reader function "+
+            "to initiate chopping...",file=sys.stderr)
+    
+    itermae.reader(configuration)
+        # Configuration should be dict with values under these names:
+        # input_file
+        # in_format
+        # is_gzipped
+        # output_file
+        # out_format
+        # failed_file
+        # report_file
+        # matches_array
+        # outputs_array
+        # verbosity
+    
+    if args.verbose >= 1:
+        print("\n"+"["+str(time.time())+"]"+" : "+
+            "All worked 'till the work is done --- or some fatal error.",
+            file=sys.stderr)
+    
+    exit(0)
