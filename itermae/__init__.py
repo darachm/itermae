@@ -117,53 +117,43 @@ class SeqHolder:
         except:
             self.match_scores[match_id] = MatchScores(None,None,None)
 
-    def apply_filters(self, filters):
+    def build_context(self):
         """
-        This is for applying written filters to the results, so you can fail
-        things that don't look right by position of the matches, or the
-        statistics of each match. 
-        First we unpack all the group and match stats/scores, so you can
-        access them in defining filters easily.
-        Then we're just straight eval'ing in that context, because I'm not
-        thinking about security at all.
+        This just unpacks group match stats/scores into an environment that
+        the filter can then use to ... well ... filter. 
         """
 
-        env_thing = { **self.group_stats , **self.match_scores }
+        # This is context for the filters, so is operating more as values,
+        # as opposed to the context_seq which is operating with SeqRecords
+        self.context_filter = { **self.group_stats , **self.match_scores }
         for i in self.seqs:
-            if i in env_thing.keys():
-                env_thing[i].seq = self.seqs[i].seq
+            if i in self.context_filter.keys():
+                self.context_filter[i].seq = self.seqs[i].seq
+                    # Also adding on the actual sequence, so it's accessible
 
-        return_object = []
+        # Then unpack the sequences as a context for building the output 
+        # sequences, this is different so that the qualities get stuck with
+        # the bases of the groups
+        self.context_seq = { **self.seqs }
+
+    def filter_and_build_output(self,output_dict):
+        """
+        This tests a defined filter on the 'seq_holder' object, and if it passes
+        then generates the appropriate sequence record. 
+        """
+
         try:
-            for i in range(len(filters)):
-                return_object.append(False)
-                # Here we evaluate them but using that dictionary as the
-                # global dictionary, because done is better than dogma.
-                try:
-                    if eval(filters[i],globals(),env_thing):
-                        return_object[i] = True
-                except:
-                    return_object[i] = False
+            if eval(output_dict['filter'],globals(),self.context_filter):
+                out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
+                out_seq = eval(output_dict['seq'],globals(),self.context_seq)
+                out_seq.id = str(eval(output_dict['id'],globals(),self.context_seq))
+                return out_seq
         except:
-            return_object.append(False)
-
-        return return_object
-
-    def build_output(self,output_id_def,output_seq_def):
-        """
-        Similar thing as above, but just making it flat of all the seqs
-        so you can build what you want in the outputs. First we make the output
-        seq object, then the ID (which can have seqs in it, as part of the ID, 
-        so like extracted UMIs or sample-indicies).
-        """
-
-        env_thing = { **self.seqs }
-
-        out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
-        out_seq = eval(output_seq_def,globals(),env_thing)
-        out_seq.id = str(eval(output_id_def,globals(),env_thing))
-
-        return out_seq
+            if self.verbosity >= 2:
+                print("\n["+str(time.time())+"] : This read "+
+                    self.seqs['input'].id+" failed to pass filter "+
+                    str(output_dict['filter']),file=sys.stderr)
+            return None
 
     def format_report(self,label,output_seq,evaluated_filters):
         """
@@ -304,10 +294,22 @@ def reader(configuration):
             verbosity=configuration['verbosity']
             )
 
-    input_seqs.close()
-    output_fh.close()
-    failed_fh.close()
-    report_fh.close()
+    try:
+        input_seqs.close()
+    except:
+        pass
+    try:
+        output_fh.close()
+    except:
+        pass
+    try:
+        failed_fh.close()
+    except:
+        pass
+    try:
+        report_fh.close()
+    except:
+        pass
 
     return(0)
 
@@ -342,9 +344,9 @@ def chop(
             file=sys.stderr)
 
     # This should fail if you didn't specify anything taking from input stream!
-    assert operations_array[0][0] == "input", (
+    assert operations_array[0]['input'] == "input", (
         "can't find the sequence named `input`, rather we see `"+
-        operations_array[0][0]+"` in the holder, so breaking. You should "+
+        operations_array[0]['input']+"` in the holder, so breaking. You should "+
         "have the first operation start with `input` as a source." )
 
     #
@@ -365,117 +367,113 @@ def chop(
             exit(1)
 
         seq_holder.apply_operation( string.ascii_lowercase[operation_number],
-                operation[0],operation[1] )
+                operation['input'],operation['regex'] )
 
     # Now seq_holder should have a lot of goodies, match scores and group stats
     # and matched sequences groups.
     # All these values allow us to apply filters :
 
-    #
-    #
-    # APPLYING FILTERS
-    #
-    #
+    ### Filtering and generating outputs
 
-    evaluated_filters = seq_holder.apply_filters(filters) 
+    # First unpacking matches and scores into an internal environment for
+    # the filter 'eval's
+    seq_holder.build_context()
 
-    # This evaluated_filters should be boolean list. So did we pass all filters?
-    # If not then do this
-    if not all(evaluated_filters):
+    # Then we eval the filters and build outputs, for each output
+    output_records = []
+    for each_output in outputs_array:
+        output_records.append( 
+            seq_holder.filter_and_build_output(each_output) 
+        )
 
-        if verbosity >= 2:
-            print("\n["+str(time.time())+"] : match is : evaluated the "+
-                "filters as : "+str(evaluated_filters)+" and so failed.", 
-                file=sys.stderr)
+    passed_filters = any([i is not None for i in output_records])
 
-        # So if we should write this per-record report
-        if report_fh != None:
-            print( seq_holder.format_report("FailedFilter",
-                    seq_holder.seqs['input'].seq, evaluated_filters)
-                ,file=report_fh)
 
-        if failed_fh != None:
-            SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
+#    # So if we should write this per-record report
+#    if report_fh != None:
+#        print( seq_holder.format_report("FailedFilter",
+#                seq_holder.seqs['input'].seq, evaluated_filters)
+#            ,file=report_fh)
+#
+#    if failed_fh != None:
+#        SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
 
-        return 0
 
-    # Or if we passed all filters, then we try to form the outputs
-    else:
 
-        #
-        #
-        # FORMING OUTPUTS
-        #
-        #
-        try:
-
-            # We attempt to form the correct output records
-            output_records = [ seq_holder.build_output(i, j) for i, j in outputs_array ]
-            # So this will fail us out of the 'try' if it doesn't form.
-            # i is the output_arrays ID spec, and j is sequence spec.
-
-            # Format the output record as appropriate
-            for which, output_record in enumerate(output_records):
-                if out_format == "sam":
-                    print(
-                        format_sam_record(
-                            output_record.id, str(output_record.seq),
-                            ''.join([chr(i+33) for i in 
-                                    output_record.letter_annotations['phred_quality']]
-                                    ),
-                            "IE:Z:"+str(which)
-                        ),
-                        file=output_fh
-                    )
-                elif out_format == "txt":
-                    print(
-                        str(output_record.seq),
-                        file=output_fh
-                    )
-                else:
-                    try:
-                        SeqIO.write(output_record, output_fh, out_format) 
-                    except:
-                        print("I don't know '"+out_format+"' format, "+
-                            "I know sam, txt, fastq, and fasta.",
-                            file=sys.stderr) 
-                        exit(1)
-
-                # If we want to write the report, we make it
-                if report_fh != None:
-                    print( seq_holder.format_report("Passed",
-                            output_record.seq, evaluated_filters)
-                        ,file=report_fh)
-
-            if verbosity >= 2:
-                print("\n["+str(time.time())+"] : evaluated the "+
-                    "filters as : "+str(evaluated_filters)+" and so passed.", 
-                    file=sys.stderr)
-
-            return 0
-
-        #
-        #
-        # FAILED FORMATTING FAILS
-        #
-        #
-        except:
-
-            if verbosity >= 2:
-                print("\n["+str(time.time())+"] : failed upon forming the "+
-                    "output.", file=sys.stderr)
-
-            # If we want to write the report, we make it
-            if report_fh != None:
-                print( 
-                    seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
-                        seq_holder.seqs['input'].seq, evaluated_filters)
-                    ,file=report_fh)
-
-            if failed_fh != None:
-                SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
-
-            return 0
+#        #
+#        #
+#        # FORMING OUTPUTS
+#        #
+#        #
+#        try:
+#
+#            # We attempt to form the correct output records
+#            output_records = [ seq_holder.build_output(i, j) for i, j in outputs_array ]
+#            # So this will fail us out of the 'try' if it doesn't form.
+#            # i is the output_arrays ID spec, and j is sequence spec.
+#
+#            # Format the output record as appropriate
+#            for which, output_record in enumerate(output_records):
+#                if out_format == "sam":
+#                    print(
+#                        format_sam_record(
+#                            output_record.id, str(output_record.seq),
+#                            ''.join([chr(i+33) for i in 
+#                                    output_record.letter_annotations['phred_quality']]
+#                                    ),
+#                            "IE:Z:"+str(which)
+#                        ),
+#                        file=output_fh
+#                    )
+#                elif out_format == "txt":
+#                    print(
+#                        str(output_record.seq),
+#                        file=output_fh
+#                    )
+#                else:
+#                    try:
+#                        SeqIO.write(output_record, output_fh, out_format) 
+#                    except:
+#                        print("I don't know '"+out_format+"' format, "+
+#                            "I know sam, txt, fastq, and fasta.",
+#                            file=sys.stderr) 
+#                        exit(1)
+#
+#                # If we want to write the report, we make it
+#                if report_fh != None:
+#                    print( seq_holder.format_report("Passed",
+#                            output_record.seq, evaluated_filters)
+#                        ,file=report_fh)
+#
+#            if verbosity >= 2:
+#                print("\n["+str(time.time())+"] : evaluated the "+
+#                    "filters as : "+str(evaluated_filters)+" and so passed.", 
+#                    file=sys.stderr)
+#
+#            return 0
+#
+#        #
+#        #
+#        # FAILED FORMATTING FAILS
+#        #
+#        #
+#        except:
+#
+#            if verbosity >= 2:
+#                print("\n["+str(time.time())+"] : failed upon forming the "+
+#                    "output.", file=sys.stderr)
+#
+#            # If we want to write the report, we make it
+#            if report_fh != None:
+#                print( 
+#                    seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
+#                        seq_holder.seqs['input'].seq, evaluated_filters)
+#                    ,file=report_fh)
+#
+#            if failed_fh != None:
+#                SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
+#
+#            return 0
 
 
 
