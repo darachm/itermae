@@ -14,102 +14,153 @@ import itermae
 
 # Name and description of this program
 parser = argparse.ArgumentParser(description=""+
-    "itermae - iteratively chop up sequences using fuzzy regular expressions. "+
-    "There is no parallelization internal to this script, so for practical "+
-    "performance you should use multiple files or stream in chunks via "+
-    "STDIN. I recommend you use the later, with GNU parallel, see examples "+
-    "in the README.")
+    "itermae - iteratively chop up sequences using fuzzy regular expressions. ",
+    formatter_class=argparse.RawTextHelpFormatter,
+    add_help=False)
 
-# Input determination 
-parser.add_argument("-i","--input",default="STDIN",
-    help="Where the input reads are. The default is standard input "+
-        "( 'STDIN' ), but this can also be a filepath to read. ")
-# Is it gzip'd ?
-parser.add_argument("-z","--gzipped",action="store_true",
-    help="Use this flag if the input is a gzipped file.")
-# Input format
-parser.add_argument("--input-format",default='fastq',
-    help="What format the input is. Default is 'FASTQ'. I expect this, or "+
-        "'SAM', 'FASTA', or 'txt', case insensitive.")
+parser_config = parser.add_argument_group('Configuration file (optional)')
+parser_config.add_argument("--config",default=False,
+    help="File path to the config file. "+
+        "If specified, overrules all other relevant arguments. "+
+        "See examples/docs.")
 
-# Output determination
-parser.add_argument("-o","--output",default="STDOUT",
-    help="Where to output matches to. The recommended default is standard out "+
-        "( 'STDOUT' ), but this can also be a filepath to write. ")
-parser.add_argument("--output-format",default='sam',
-    help="What format the output should be in. Default is an unmapped SAM "+
-        "('SAM'), also available are 'FASTQ' and 'FASTA', case insensitive.")
-parser.add_argument("-f","--failed",default=None,
-    help="Optional filepath for writing a file passing-through the reads that "+
-        "failed at any stage of matching, filtering, or forming outputs. Can "+
-        "also be directed to 'STDOUT' or 'STDERR'.")
-parser.add_argument("-r","--report",default=None,
-    help="Optional filepath for writing a report of read-level statistics. "+
-        "This is heavy disk usage, but useful for debugging runs with a "+
-        "limit (see '--limit') set.")
+parser_input = parser.add_argument_group('Defining input sources')
+parser_input.add_argument("-i","--input",default="STDIN",
+    help="""\
+Specify where the input reads are from. This can 
+be a file path, but the suggested default is 
+standard input ( 'STDIN' ).""")
+parser_input.add_argument("-z","--gzipped",action="store_true",
+    help="""\
+Use this flag if the input is a gzipped file.""")
+parser_input.add_argument("--input-format",default='fastq',
+    help="""
+Specify what format the input is. Default is 
+'FASTQ'. I expect this, or 'SAM', 'FASTA', or 
+'txt'. Case insensitive.""")
 
-# verbosity
-parser.add_argument("-v","--verbose",action="count",default=0,
-    help="Level of information to pipe out to STDERR. "+
-        "None is nothing, "+
-        "-v is setup messages and start-stop messsages, "+
-        "-v -v is read-level details, "+
-        "-v -v -v is operation-level details.")
+parser_output = parser.add_argument_group('Defining where to output')
+parser_output.add_argument("-o","--output",default="STDOUT",
+    help="""\
+Specify where to output successful matched 
+groups to. The recommended default is standard 
+out ( 'STDOUT' ), but this can also be a 
+filepath to write.""")
+parser_output.add_argument("--output-format",default='sam',
+    help="""\
+Specify what format the output should be in. 
+Default is an unmapped SAM ('SAM'), also 
+available are 'FASTQ' and 'FASTA', case 
+insensitive.""")
+parser_output.add_argument("-f","--failed",default=None,
+    help="""\
+Optional filepath for passing-through the reads 
+that failed at any stage of matching, filtering,
+or forming outputs. Can also be directed to 
+'STDOUT' or 'STDERR'.""")
+parser_output.add_argument("-r","--report",default=None,
+    help="""\
+Optional filepath for writing a report of 
+read-level statistics. This is a large 
+inefficient output, but useful for debugging by 
+using with a small subset of the data. 
+(ex: 'head -n 10000 file.fq | tail -n 100' )""")
 
-### CLI operation and output specification
-# Operations
-parser.add_argument("-m","--match",action="append",
-    help="The operation of matching and extracting. For details about syntax, "+
-        "please refer to the README, documentation, and tutorials, and the "+
-        "regex module documentation about writing fuzzy regexes. "+
-        "\n\n"+
-        "Each operation has a named input group, then a pattern using named "+
-        "capture groups. The input sequence read is called 'input', and is a "+
-        "reserved name (as is 'dummyspacer', reserved for output forming). "+
-        "Each operation is done in the order you specify, so later "+
-        "operations can use previous matching groups as inputs. "+
-        "\n\n"+
-        "Importantly, all input sequences are converted to uppercase, so "+
-        "write all regex in uppercase. The alphabet is unrestricted but "+
-        "untested beyond ATCGN.")
+parser_match = parser.add_argument_group('Matches')
+parser_match.add_argument("-m","--match",action="append",
+    help="""\
+Specify what is being matched against, the 
+regular expression, and what groups to extract.
+Format example: 
 
-# Outputs
-parser.add_argument("-oi","--output-id",action="append",
-    help="Each specification of record IDs to output, per read. "+
-        "These should evaluate to a string in python, and you can access "+
-        "properties of the input and matched groups such as 'input.id' or "+
-        "'umi+seq', and combine these like 'input.id+\"_\"+umi.seq'. " 
-        "to append the index sequence to the FASTQ ID. "+
-        "Multiple arguments of this can be supplied, will be output in "+
-        "the same file, and if output in SAM will have a tag 'IE:Z' "+
-        "specifying which output it is.")
-parser.add_argument("-os","--output-seq",action="append",
-    help="Each specification of record sequences to output, per read. "+
-        "This must be in the same order as the record IDs, as they are "+
-        "paired. This is evaluated to form a BioPython SeqRecords, so "+
-        "can be assembled by combining the names of matched groups with "+
-        "plus-signs. For example, 'sample+barcode+umi' would append the "+
-        "sequence of these three groups together. "+
-        "'dummyspacer' is also available to insert an 'X' for "+
-        "use in later parsing.")
-parser.add_argument("-of","--output-filter",action="append",
-    help="Filters to prevent output of reads that do not pass a criteria. "+
-        "These must evaluate to True or False (in python), and can use "+
-        "some attributes of the matches or matched groups. The 'statistics' "+
-        "package is loaded to permit using summary statistics of these "+
-        "properties. For examples, "+
-        "'umi.length == 5', 'statistics.mean(barcode.quality)',  "+
-        "'sample_barcode == \"TTCAC\"'. See tutorial/documentation for more. "+
-        "Define in same order as the output ids and seqs. "+
-        "If less than number of outputs, then extended across all.")
+'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'
 
-parser.add_argument("--config",default=False,
-    help="Optional config file. If specified, overrules all other relevant "+
-        "arguements. See examples/docs.")
+The ' > ' is a necessary delimiter. The raw 
+input sequence read is called 'input', and is a 
+reserved group name (as is 'dummyspacer', see 
+docs). Each match is done in the order you 
+specify, so later matches can use previous 
+matching groups as inputs (like 'inputGroup' 
+in the above example). Importantly, all input 
+sequences are converted to uppercase, so write 
+all regex in uppercase. 
+
+For more details, please refer to the README, 
+documentation, and tutorials, and the regex 
+module documentation.""")
+
+parser_groups = parser.add_argument_group(
+    'Define groups output',
+    """\
+Each ID, sequence, and filter is grouped together used in order, 
+so the first ID is used with the first sequence and the first
+filter -- unless there is only one, in which case it is recycled
+for all groups output.
+""")
+parser_groups.add_argument("-oi","--output-id",action="append",
+    help="""\
+The ID field of an output. These should evaluate
+to a string in Python. You can build this by 
+concatenating together parts of the matched 
+groups, such as:
+
+'input.id+\"_\"+umi.seq' 
+
+to append the index sequence to the input's ID.""")
+parser_groups.add_argument("-os","--output-seq",action="append",
+    help="""\
+The sequence of an output. This is evaluated to
+form a BioPython SeqRecord, so can be assembled 
+by combining the names of matched groups. 
+For example:
+
+'sample+barcode+umi'
+
+would append the sequence of these three groups 
+together. Group 'dummyspacer' is also available 
+to insert an 'X' into the sequence for 
+subsequent parsing.""")
+parser_groups.add_argument("-of","--output-filter",action="append",
+    help="""\
+Define a filter that must be true in order to
+output this group. This must evaluate to True or 
+False (in python), and can use some attributes 
+of the matches or matched groups.  For example: 
+
+'umi.length == 5 & statistics.mean(barcode.quality) >= 30'
+
+will only output when the matched UMI is 5 bases
+and the mean quality of the barcode match is more
+than 30. While
+
+'sample_barcode == \"TTCAC\"'
+
+will only output when the sample_barcode group is
+exactly that sequence. 
+
+See tutorial/documentation for details and more
+examples. 
+
+If there is only one filter defined, it is 
+recycled to filter for all output groups.""")
+
+parser_misc = parser.add_argument_group('')
+parser_misc.add_argument("-v","--verbose",action="count",default=0,
+    help="""\
+Level of information to pipe out to STDERR. 
+  Adding none means itermae runs silently.
+  -v prints setup messages and start-stop messsages.
+  -v -v also prints read-level details.
+  -v -v -v also prints match-level details.""")
+parser_misc.add_argument("-h","--help",action="store_true",default=False)
 
 ### Parse the arguments, check them.
 
 args = parser.parse_args()
+
+if args.help:
+    parser.print_help()
+    exit(1)
 
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
     if name in reserved_names:
