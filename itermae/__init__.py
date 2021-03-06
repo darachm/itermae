@@ -253,77 +253,69 @@ def open_input_fh(file_string,gzipped=False):
             return open(sys.stdin,'rt')
     else:
         if gzipped:
-            return gzip.open(input_file,'rt',encoding='ascii')
+            return gzip.open(file_string,'rt',encoding='ascii')
         else:
-            return open(input_file,'rt')
+            return open(file_string,'rt')
 
 
 def open_output_fh(file_string):
     if file_string.upper() == 'STDOUT':
-        return open(sys.stdout,'a')
+        return sys.stdout
     elif file_string.upper() == 'STDERR':
-        return open(sys.stderr,'a')
+        return sys.stderr
     else:
         return open(file_string,'a')
 
 
-def reader(
-        input_file, is_gzipped, 
-        operations_array, outputs_array,
-        in_format, out_format, output_file, failed_file, report_file,
-        verbosity
-        ):
+def reader(configuration):
     """
     This reads inputs, calls the `chop` function on each one, and sorts it
-    off to outputs. So this is called by the main function, and is all about
-    the IO. 
+    off to outputs. So this is called by the main function, and is mostly about
+    handling the I/O. 
     """
 
-    #
-    # Open up file handles
-    #
+    ### Open up file handles
 
     # Input
     input_seqs = open_appropriate_input_format(
-            open_input_fh(input_file,is_gzipped),
-            in_format)
+        open_input_fh(configuration['input'],configuration['input_gzipped']),
+        configuration['input_format'])
 
     # Outputs - passed records, failed records, report file
-    output_fh = open_output_fh(output_file)
-
+    output_fh = open_output_fh(configuration['output'])
     try:
-        failed_fh = open_output_fh(failed_file)
+        failed_fh = open_output_fh(configuration['failed']),
     except:
         failed_fh = None
-
     try:
-        report_fh = open_output_fh(report_file)
+        report_fh = open_output_fh(configuration['report'])
     except:
         report_fh = None
 
     # Do the chop-ing...
     for each_seq in input_seqs:
-        # Each sequence, one by one...
-
+            # Each sequence, one by one...
         chop(
-            seq_holder=SeqHolder(each_seq,verbosity=verbosity),  
-            operations_array=operations_array, filters=filters, 
-            outputs_array=outputs_array, 
-            in_format=in_format,
-            out_format=out_format, 
+            seq_holder=SeqHolder(each_seq,verbosity=configuration['verbosity']),  
+            operations_array=configuration['matches'],
+            outputs_array=configuration['output_groups'],
+            out_format=configuration['output_format'],
             output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
-            verbosity=verbosity
+            verbosity=configuration['verbosity']
             )
 
-    input_text.close()
+    input_seqs.close()
+    output_fh.close()
+    failed_fh.close()
+    report_fh.close()
 
     return(0)
 
 
 def chop(
     seq_holder,
-    operations_array, filters, outputs_array, 
-    in_format, out_format,
+    operations_array, outputs_array, 
+    out_format,
     output_fh, failed_fh, report_fh,
     verbosity
     ):
