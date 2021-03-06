@@ -75,9 +75,10 @@ Format example:
 
 'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'
 
-The ' > ' is a necessary delimiter. The raw 
-input sequence read is called 'input', and is a 
-reserved group name (as is 'dummyspacer', see 
+If no input group is specified on the left of a
+' > ' delimiter, then I assume you mean the raw 
+input sequence (ie 'input'). This, and 
+'dummyspacer' are reserved names for groups (see
 docs). Each match is done in the order you 
 specify, so later matches can use previous 
 matching groups as inputs (like 'inputGroup' 
@@ -202,7 +203,7 @@ def config_from_file(file_path):
 
     # Verbosely attempt to read it, and I want a hard exit if it's not parsed
     try:
-        with open(args.config,'r') as f:
+        with open(file_path,'r') as f:
             config = yaml.load(f,Loader=yaml.SafeLoader)
     except:
         print('I failed to parse the supplied YAML file path name.',
@@ -219,11 +220,17 @@ def config_from_file(file_path):
         verbosity = 0 # else, just keep it bottled it up and tell no one 0_0
     configuration['verbosity'] = verbosity
 
+    if verbosity >= 1:
+        print("Reading and processing the configuration file '"+
+            str(file_path)+"'.",file=sys.stderr)
+
     try:
         matches_array = []
+        if verbosity >= 1:
+            print("Processing each match:",file=sys.stderr)
         for each in config['matches']:
             if verbosity >= 1:
-                print("Processing each match, taking '"+each['use']+"'. \n",
+                print("    Taking '"+each['use']+"'. \n",
                     end="",file=sys.stderr)
             if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
                 print("Error! It looks like you've repeated a group marking "+
@@ -256,7 +263,7 @@ def config_from_file(file_path):
                     each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
                     i += 1
                 if verbosity >= 1:
-                    print("    Found group '"+mark+"' with pattern '"+
+                    print("        Found group '"+mark+"' with pattern '"+
                         regex_groups[mark]+"'",end="",file=sys.stderr)
                 try: # trying to build a repeat range, if supplied
                     if 'repeat_min' not in each['marked_groups'][mark].keys():
@@ -321,12 +328,18 @@ def config_from_file(file_path):
         outputs_array = [] 
         i = 0 # this is for naming untitled outputs sequentially
         for each in output_list:
-            if each['id'] is None:
+            try:
+                each['id']
+            except:
                 each['id'] = 'input.id' # default, the input.id
-            if each['name'] is None:
+            try:
+                each['name']
+            except:
                 each['name'] = 'untitled_output_'+str(i)
                 i += 1
-            if each['filter'] is None:
+            try:
+                each['filter']
+            except:
                 each['filter'] = 'True' # so will pass if not provided
             if verbosity >= 1:
                 print("    Parsing output specification of '"+each['name']+"', "+
@@ -381,18 +394,18 @@ def config_from_file(file_path):
 def config_from_args(args_copy):
     configuration = {}
 
-    verbosity = args_copy.verbose
-    configuration['verbosity'] = verbosity
+    verbosity = configuration['verbosity'] = args_copy.verbose
 
     try:
         matches_array = []
-        for each in matches:
-
+        for each in args_copy.match:
             for capture_name in re.findall('<(.*?)>',each):
-                print(capture_name)
                 check_reserved_name(capture_name)
-    
-            (input_string, regex_string) = re.split("\s>\s",each.strip())
+            try:
+                (input_string, regex_string) = re.split("\s>\s",each.strip())
+            except:
+                input_string = 'input' # default to just use raw input
+                regex_string = each.strip()
             compiled_regex = regex.compile(
                 regex_string.strip(), # We use this regex
                 regex.BESTMATCH # And we use the BESTMATCH strategy, I think
