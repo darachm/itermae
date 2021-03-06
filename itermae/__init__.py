@@ -290,34 +290,41 @@ def reader(configuration):
             operations_array=configuration['matches'],
             outputs_array=configuration['output_groups'],
             out_format=configuration['output_format'],
+            input_format=configuration['input_format'],
             output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
             verbosity=configuration['verbosity']
             )
 
-    try:
-        input_seqs.close()
-    except:
-        pass
-    try:
-        output_fh.close()
-    except:
-        pass
-    try:
-        failed_fh.close()
-    except:
-        pass
-    try:
-        report_fh.close()
-    except:
-        pass
+    for i in [ input_seqs, output_fh, failed_fh, report_fh] :
+        try:
+            i.close()
+        except:
+            pass
 
     return(0)
+
+
+def write_out_seq(seq,fh,format,which):
+    if format == "sam":
+        print( format_sam_record( seq.id, str(seq.seq),
+                ''.join([chr(i+33) for i in 
+                        seq.letter_annotations['phred_quality']]),
+                "IE:Z:"+str(which) ),file=fh)
+    elif format == "txt":
+        print( str(seq.seq), file=fh)
+    else:
+        try:
+            SeqIO.write(seq, fh, format) 
+        except:
+            print("I don't know '"+format+"' format, and it doesn't seem to "+
+                "work with BioPython.", file=sys.stderr) 
+            exit(1)
 
 
 def chop(
     seq_holder,
     operations_array, outputs_array, 
-    out_format,
+    out_format, input_format,
     output_fh, failed_fh, report_fh,
     verbosity
     ):
@@ -349,25 +356,13 @@ def chop(
         operations_array[0]['input']+"` in the holder, so breaking. You should "+
         "have the first operation start with `input` as a source." )
 
-    #
-    #
     # ITERATING THROUGH THE MATCHING
-    #
-    #
 
     # First, apply each operation !
     for operation_number, operation in enumerate(operations_array):
 
-        if operation_number > 26:
-            print("Listen, here's the deal. I did not anticipate anyone would "+
-                "be trying more than a few operations, so the IDs are just "+
-                "one letter. So, use <=26 operations, or rewrite it "+
-                "yourself around where it calls `enumerate(operations_array)`.",
-                file=sys.stderr)
-            exit(1)
-
-        seq_holder.apply_operation( string.ascii_lowercase[operation_number],
-                operation['input'],operation['regex'] )
+        seq_holder.apply_operation( 'match_'+str(operation_number),
+                operation['input'], operation['regex'] )
 
     # Now seq_holder should have a lot of goodies, match scores and group stats
     # and matched sequences groups.
@@ -386,94 +381,28 @@ def chop(
             seq_holder.filter_and_build_output(each_output) 
         )
 
-    passed_filters = any([i is not None for i in output_records])
+    passed_filters = not any([i is None for i in output_records])
 
+    # So if we should write this per-record report
+    if report_fh != None:
+        if passed_filters:
+            print( seq_holder.format_report("PassedFilters",
+                    seq_holder.seqs['input'].seq,
+                    str([i is not None for i in output_records]) )
+                ,file=report_fh)
+        else:
+            print( seq_holder.format_report("FailedAtLeastOutput",
+                    seq_holder.seqs['input'].seq,
+                    str([i is not None for i in output_records]) )
+                ,file=report_fh)
 
-#    # So if we should write this per-record report
-#    if report_fh != None:
-#        print( seq_holder.format_report("FailedFilter",
-#                seq_holder.seqs['input'].seq, evaluated_filters)
-#            ,file=report_fh)
-#
-#    if failed_fh != None:
-#        SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
+    if failed_fh != None:
+        if not passed_filters:
+            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format,0)
 
-
-
-#        #
-#        #
-#        # FORMING OUTPUTS
-#        #
-#        #
-#        try:
-#
-#            # We attempt to form the correct output records
-#            output_records = [ seq_holder.build_output(i, j) for i, j in outputs_array ]
-#            # So this will fail us out of the 'try' if it doesn't form.
-#            # i is the output_arrays ID spec, and j is sequence spec.
-#
-#            # Format the output record as appropriate
-#            for which, output_record in enumerate(output_records):
-#                if out_format == "sam":
-#                    print(
-#                        format_sam_record(
-#                            output_record.id, str(output_record.seq),
-#                            ''.join([chr(i+33) for i in 
-#                                    output_record.letter_annotations['phred_quality']]
-#                                    ),
-#                            "IE:Z:"+str(which)
-#                        ),
-#                        file=output_fh
-#                    )
-#                elif out_format == "txt":
-#                    print(
-#                        str(output_record.seq),
-#                        file=output_fh
-#                    )
-#                else:
-#                    try:
-#                        SeqIO.write(output_record, output_fh, out_format) 
-#                    except:
-#                        print("I don't know '"+out_format+"' format, "+
-#                            "I know sam, txt, fastq, and fasta.",
-#                            file=sys.stderr) 
-#                        exit(1)
-#
-#                # If we want to write the report, we make it
-#                if report_fh != None:
-#                    print( seq_holder.format_report("Passed",
-#                            output_record.seq, evaluated_filters)
-#                        ,file=report_fh)
-#
-#            if verbosity >= 2:
-#                print("\n["+str(time.time())+"] : evaluated the "+
-#                    "filters as : "+str(evaluated_filters)+" and so passed.", 
-#                    file=sys.stderr)
-#
-#            return 0
-#
-#        #
-#        #
-#        # FAILED FORMATTING FAILS
-#        #
-#        #
-#        except:
-#
-#            if verbosity >= 2:
-#                print("\n["+str(time.time())+"] : failed upon forming the "+
-#                    "output.", file=sys.stderr)
-#
-#            # If we want to write the report, we make it
-#            if report_fh != None:
-#                print( 
-#                    seq_holder.format_report("FailedDirectivesToMakeOutputSeq",
-#                        seq_holder.seqs['input'].seq, evaluated_filters)
-#                    ,file=report_fh)
-#
-#            if failed_fh != None:
-#                SeqIO.write(seq_holder.seqs['input'], failed_fh, "fastq")
-#
-#            return 0
+    for which, output_record in enumerate(output_records):
+        if output_record is not None:
+            write_out_seq(output_record, output_fh, out_format, which)
 
 
 
