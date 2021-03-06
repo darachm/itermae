@@ -154,10 +154,12 @@ Level of information to pipe out to STDERR.
   -v -v -v also prints match-level details.""")
 parser_misc.add_argument("-h","--help",action="store_true",default=False)
 
-### Parse the arguments, check them.
+### Parse the arguments, turn them into a configuration object, report that
 
 args = parser.parse_args()
 
+# Necessary since I disabled the auto-'help' argument so that it wouldn't
+# print as part of an 'optional' header
 if args.help:
     parser.print_help()
     exit(1)
@@ -165,7 +167,7 @@ if args.help:
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
     if name in reserved_names:
         print("Hey, you can't name a capture group "+
-#            (" or ".join(reserved_names[ (i == name) for i in reserved_names]))+
+            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
             ", I'm using that/those! Pick a different name.",
             file=sys.stderr)
         exit(1)
@@ -192,6 +194,10 @@ iupac_codes = {
 
 
 def config_from_file(file_path):
+    """
+    Tries to parse a configuration YAML file, and form a dictionary to pass into
+    the main itermae reader function.
+    """
     configuration = {}
 
     # Verbosely attempt to read it, and I want a hard exit if it's not parsed
@@ -203,7 +209,7 @@ def config_from_file(file_path):
             file=sys.stderr)
         exit(1)
 
-    # Looking for verbosity instruction global, if not that then in outputs
+    # Looking for verbosity instruction global, if not global, then in 'outputs'
     try:
         try:
             verbosity = config['verbosity']
@@ -214,21 +220,35 @@ def config_from_file(file_path):
     configuration['verbosity'] = verbosity
 
     try:
-        operations_array = []
-        for each in config['operations']:
+        matches_array = []
+        for each in config['matches']:
             if verbosity >= 1:
-                print("Processing taking '"+each['use']+"'. \n",end="",file=sys.stderr)
+                print("Processing each match, taking '"+each['use']+"'. \n",
+                    end="",file=sys.stderr)
+            if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
+                print("Error! It looks like you've repeated a group marking "+
+                    "character to match in multiple places. I do not support "+
+                    "that, use a different character.",file=sys.stderr)
+                exit(1)
+            if len(each['pattern']) != len(each['marking']):
+                print("Error! The pattern and marking you've defined are of "+
+                    "different lengths. I need them to be the same length.",
+                    file=sys.stderr)
+                exit(1)
             regex_groups = dict()
-            group_order = list()
+            group_order = list() # This is to keep track of the order in which
+                # the groups are being defined in the paired lines
             for character, mark in zip(each['pattern'],each['marking']):
                 if mark not in group_order:
                     group_order.append(mark)
                 try:
                     regex_groups[mark] += iupac_codes[character]
+                        # This is adding on the pattern for a certain marked
+                        # matching group, as zipped above
                 except:
                     regex_groups[mark] = iupac_codes[character]
-            regex_string = ''
-            i = 0
+            regex_string = '' # building this now
+            i = 0 # this is for keeping track of the untitled groups
             for mark in group_order:
                 if 'name_as' in each['marked_groups'][mark].keys():
                     check_reserved_name(each['marked_groups'][mark]['name_as'])
@@ -236,12 +256,15 @@ def config_from_file(file_path):
                     each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
                     i += 1
                 if verbosity >= 1:
-                    print("    Found group '"+mark+"' with pattern '"+regex_groups[mark]+"'",end="",file=sys.stderr)
-                try: 
+                    print("    Found group '"+mark+"' with pattern '"+
+                        regex_groups[mark]+"'",end="",file=sys.stderr)
+                try: # trying to build a repeat range, if supplied
                     if 'repeat_min' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_min'] = each['marked_groups'][mark]['repeat']
+                        each['marked_groups'][mark]['repeat_min'] = \
+                            each['marked_groups'][mark]['repeat']
                     if 'repeat_max' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_max'] = each['marked_groups'][mark]['repeat']
+                        each['marked_groups'][mark]['repeat_max'] = \
+                            each['marked_groups'][mark]['repeat']
                     regex_groups[mark] = (regex_groups[mark]+
                         '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
                             str(each['marked_groups'][mark]['repeat_max'])+'}'
@@ -254,7 +277,7 @@ def config_from_file(file_path):
                             " times",end="",file=sys.stderr)
                 except:
                     pass
-                error_array = []
+                error_array = [] # Then building the error tolerance spec
                 try: 
                     error_array.append(
                         "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
@@ -285,12 +308,12 @@ def config_from_file(file_path):
                     each['marked_groups'][mark]['name_as']+
                     ">"+regex_groups[mark]+")"+error_string )
             compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-            operations_array.append( [each['use'], compiled_regex] )
+            matches_array.append( [each['use'], compiled_regex] )
     except:
-        print("I failed to build operations array from the arguments supplied.",
+        print("I failed to build matches array from the arguments supplied.",
             file=sys.stderr)
         exit(1)
-    configuration['operations'] = operations_array
+    configuration['matches'] = matches_array
 
     try:
         print("Processing output specifications.",file=sys.stderr)
@@ -362,8 +385,8 @@ def config_from_args(args_copy):
     configuration['verbosity'] = verbosity
 
     try:
-        operations_array = []
-        for each in operations:
+        matches_array = []
+        for each in matches:
 
             for capture_name in re.findall('<(.*?)>',each):
                 print(capture_name)
@@ -374,12 +397,12 @@ def config_from_args(args_copy):
                 regex_string.strip(), # We use this regex
                 regex.BESTMATCH # And we use the BESTMATCH strategy, I think
                 )
-            operations_array.append( [input_string.strip(), compiled_regex] )
+            matches_array.append( [input_string.strip(), compiled_regex] )
     except:
-        print("I failed to build operations array from the arguments supplied.",
+        print("I failed to build matches array from the arguments supplied.",
             file=sys.stderr)
         exit(1)
-    configuration['operations'] = operations_array
+    configuration['matches'] = matches_array
 
     try:
         outputs_array = [] 
@@ -487,7 +510,7 @@ if configuration['verbosity'] >= 1:
     print('    '+configuration['failed'],file=sys.stderr)
     print('    '+configuration['report'],file=sys.stderr)
     print('    '+str(configuration['verbosity']),file=sys.stderr)
-    print(configuration['operations'],file=sys.stderr)
+    print(configuration['matches'],file=sys.stderr)
     print(configuration['outputs'],file=sys.stderr)
 
 if args.verbose >= 1:
@@ -501,7 +524,7 @@ itermae.reader(
     out_format=configuration['output_format'],
     failed_file=configuration['failed'],
     report_file=configuration['report'],
-    operations_array=configuration['operations'],
+    matches_array=configuration['matches'],
     outputs_array=configuration['outputs'],
     verbosity=configuration['verbosity']
     )
