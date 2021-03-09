@@ -136,23 +136,36 @@ class SeqHolder:
         # the bases of the groups
         self.context_seq = { **self.seqs }
 
-    def filter_and_build_output(self,output_dict):
+    def evaluate_filter_of_output(self,output_dict):
         """
-        This tests a defined filter on the 'seq_holder' object, and if it passes
-        then generates the appropriate sequence record. 
+        This tests a defined filter on the 'seq_holder' object
         """
 
         try:
-            if eval(output_dict['filter'],globals(),self.context_filter):
-                out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
-                out_seq = eval(output_dict['seq'],globals(),self.context_seq)
-                out_seq.id = str(eval(output_dict['id'],globals(),self.context_seq))
-                return out_seq
+            return eval(output_dict['filter'],globals(),self.context_filter)
         except:
             if self.verbosity >= 2:
                 print("\n["+str(time.time())+"] : This read "+
-                    self.seqs['input'].id+" failed to pass filter "+
+                    self.seqs['input'].id+" failed to evaluate the filter "+
                     str(output_dict['filter']),file=sys.stderr)
+            return False
+
+    def build_output(self,output_dict):
+        """
+        This builds the output
+        """
+
+        try:
+            out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
+            out_seq = eval(output_dict['seq'],globals(),self.context_seq)
+            out_seq.id = str(eval(output_dict['id'],globals(),self.context_seq))
+            return out_seq
+        except:
+            if self.verbosity >= 2:
+                print("\n["+str(time.time())+"] : This read "+
+                    self.seqs['input'].id+" failed to build the output "+
+                    "id: "+str(output_dict['id'])+
+                    "seq: "+str(output_dict['seq']) ,file=sys.stderr)
             return None
 
     def format_report(self,label,output_seq,evaluated_filters):
@@ -377,11 +390,12 @@ def chop(
     # Then we eval the filters and build outputs, for each output
     output_records = []
     for each_output in outputs_array:
-        output_records.append( 
-            seq_holder.filter_and_build_output(each_output) 
+        output_records.append(
+            ( seq_holder.evaluate_filter_of_output(each_output), 
+                seq_holder.build_output(each_output) )
         )
 
-    passed_filters = not any([i is None for i in output_records])
+    passed_filters = not any([ i == False for i,j in output_records ])
 
     # So if we should write this per-record report
     if report_fh != None:
