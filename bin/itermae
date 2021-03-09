@@ -169,7 +169,8 @@ if __name__ == '__main__':
         try: 
             configuration = itermae.config_from_file(args.config)
         except:
-            print("Configuring from that file '"++"' failed.",file=sys.stderr)
+            print("Configuring from that file '"+args.config+"' failed.",
+                file=sys.stderr)
             exit(1)
     else:
         try:

@@ -10,6 +10,7 @@ import re
 import itertools
 import copy
 import io
+import yaml
 
 import regex
 from Bio import SeqIO
@@ -587,7 +588,7 @@ def reader(configuration):
     # Outputs - passed records, failed records, report file
     output_fh = open_output_fh(configuration['output'])
     try:
-        failed_fh = open_output_fh(configuration['failed']),
+        failed_fh = open_output_fh(configuration['failed'])
     except:
         failed_fh = None
     try:
@@ -626,13 +627,7 @@ def write_out_seq(seq,fh,format,which):
     elif format == "txt":
         print( str(seq.seq), file=fh)
     else:
-        try:
-            SeqIO.write(seq, fh, format) 
-        except:
-            print("Some error happened. It may have tried to print a None, or "+
-                "I don't know '"+format+"' format, and it doesn't seem to "+
-                "work with BioPython.", file=sys.stderr) 
-            exit(1)
+        SeqIO.write(seq, fh, format) 
 
 
 def chop(
@@ -652,6 +647,7 @@ def chop(
     # If qualities are missing, add them as just 40
     if 'phred_quality' not in seq_holder.seqs['input'].letter_annotations.keys():
         seq_holder.seqs['input'].letter_annotations['phred_quality'] = [40]*len(seq_holder.seqs['input'])
+
         if verbosity >= 2:
             print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
                 "to sequence.",
@@ -679,8 +675,7 @@ def chop(
                 operation['input'], operation['regex'] )
 
     # Now seq_holder should have a lot of goodies, match scores and group stats
-    # and matched sequences groups.
-    # All these values allow us to apply filters :
+    # and matched sequences groups. All these values allow us to apply filters :
 
     ### Filtering and generating outputs
 
@@ -691,10 +686,10 @@ def chop(
     # Then we eval the filters and build outputs, for each output
     output_records = []
     for each_output in outputs_array:
-        output_records.append(
-            ( seq_holder.evaluate_filter_of_output(each_output), 
-                seq_holder.build_output(each_output) )
-        )
+        output_records.append( ( 
+                seq_holder.evaluate_filter_of_output(each_output), 
+                seq_holder.build_output(each_output) 
+            ) )
 
     passed_filters = not any([ i == False for i,j in output_records ])
 
@@ -716,6 +711,4 @@ def chop(
             write_out_seq(output_record[1], output_fh, out_format, which)
         elif failed_fh != None:
             write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, which)
-
-
 
