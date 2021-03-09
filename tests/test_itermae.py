@@ -2,6 +2,8 @@
 
 import pytest
 
+import sys
+sys.path.append('../itermae')
 import itermae
 
 # Required for testing apply_operation, as regex is generated in the command
@@ -51,6 +53,14 @@ def test_groupstats_quality(groupstats):
 def test_groupstats_flatten(groupstats):
     assert groupstats.flatten() == "5_15_10"
 
+
+# Setup inputs
+# I'm not testing BioPython SeqIO, I assume that's good.
+# This instead uses that to return a list of the records in the file.
+@pytest.fixture
+def fastqfile():
+    return SeqIO.parse("itermae/data/toy.fastq","fastq")
+
 #
 # SeqHolder Tests
 #
@@ -71,13 +81,6 @@ def test_seqholder_dummy(fastqfile):
         # Is the number we just put there 40?
         assert seqholder.seqs['dummyspacer'].letter_annotations['phred_quality'] == [40] 
 
-# Setup inputs
-# I'm not testing BioPython SeqIO, I assume that's good.
-# This instead uses that to return a list of the records in the file.
-@pytest.fixture
-def fastqfile():
-    return SeqIO.parse("itermae/data/toy.fastq","fastq")
-
 # Test that SeqHolder can apply_operation, then since we're there testing
 # that it finds the right groups for each seq, and passes or fails filters 
 # appropriately.
@@ -86,9 +89,9 @@ def test_seqholder_match_filter(fastqfile):
     for seq, pos_pass, qual_pass, seq_pass, sequences_found, \
         seq_targets, report_targets \
         in zip(fastqfile,
-            [ [i == 1] for i in [1,1,0,1,0,0,1,1,1] ],
-            [ [i == 1] for i in [0,0,0,1,0,0,1,1,0] ],
-            [ [i == 1] for i in [1,0,0,0,0,0,0,1,0] ],
+            [ i == 1 for i in [1,1,0,1,0,0,1,1,1] ],
+            [ i == 1 for i in [0,0,0,1,0,0,1,1,0] ],
+            [ i == 1 for i in [1,0,0,0,0,0,0,1,0] ],
             [   set(['dummyspacer','input','sample','fixed1','rest','tag','strain']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
                 set(['dummyspacer','input']),
@@ -135,25 +138,42 @@ def test_seqholder_match_filter(fastqfile):
         # Are the right sequences found/matched for each read?
         assert set(seqholder.seqs.keys()) == sequences_found 
         # Does it pass a position filter?
-        assert pos_pass == seqholder.apply_filters(['sample.length == 5 and rest.start >= 15']) 
+        seqholder.build_context()
+        filter_result = seqholder.evaluate_filter_of_output(
+                {   'name':'test',
+                    'filter':compile('sample.length == 5 and rest.start >= 15','<string>','eval',optimize=2),
+                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
+                    'seq':compile("strain",'<string>','eval',optimize=2)
+                }) 
+        assert pos_pass == filter_result
         # Does it pass a quality filter, with statistics?
-        assert qual_pass == seqholder.apply_filters(['statistics.mean(fixed1.quality) >= 33.5'])
+        filter_result = seqholder.evaluate_filter_of_output(
+                {   'name':'test',
+                    'filter':compile('statistics.mean(fixed1.quality) >= 33.5','<string>','eval',optimize=2),
+                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
+                    'seq':compile("strain",'<string>','eval',optimize=2)
+                }) 
+        assert qual_pass == filter_result
         # Does it pass a specific sequence filter?
-        assert seq_pass == seqholder.apply_filters(['sample.seq == "TTCAC" or sample.seq == "AGGAG"'])
-        # Then build outputs
-        (this_output_id, this_output_seq) = (None,None)
-        try:
-            this_output = seqholder.build_output(
-                    "input.id+'_'+sample.seq",
-                    "strain" ) 
-            (this_output_id, this_output_seq) = (this_output.id,this_output.seq)
-            this_report = seqholder.format_report("pass",this_output.seq,"FilterResults")
-        except:
-            this_report = seqholder.format_report("fail_to_form",this_output.seq,"FilterResults")
+        filter_result = seqholder.evaluate_filter_of_output(
+                {   'name':'test',
+                    'filter':compile('sample.seq == "TTCAC" or sample.seq == "AGGAG"','<string>','eval',optimize=2),
+                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
+                    'seq':compile("strain",'<string>','eval',optimize=2)
+                }) 
+        assert seq_pass == filter_result
+        # Then test outputs
+        built_output = seqholder.build_output(
+                {   'name':'test',
+                    'filter':compile('True','<string>','eval',optimize=2),
+                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
+                    'seq':compile("strain",'<string>','eval',optimize=2)
+                }) 
         # Are the right outputs constructed?
-        assert seq_targets == ( this_output_id, this_output_seq ) 
-        # Are the right filter reports constructed?
-        assert report_targets == this_report
+        if built_output is None:
+            assert seq_targets == ( None, None)
+        else:
+            assert seq_targets == ( built_output.id, built_output.seq ) 
 
 #
 #
@@ -162,14 +182,14 @@ def test_seqholder_match_filter(fastqfile):
 #
 
 one_operation_string = (
-    '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-    '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '
+    '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+    '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '
     )
 two_operation_string = (
-    '-o "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-    '-o "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-    '-oseq "barcode" -oid "input.id+\\"_\\"+sampleIndex.seq" '+
-    '-oseq "upPrime+barcode+downPrime" -oid "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '
+    '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
+    '-m "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
+    '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '+
+    '-os "upPrime+barcode+downPrime" -oi "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '
     )
 
 #
@@ -188,10 +208,12 @@ def test_full_combinations():
         results = subprocess.run(
             'cat itermae/data/barseq.'+input_format+' | '+
             'itermae '+
-            '-if '+input_format+' '+
+            '--input-format '+input_format+' '+
             operations_list[which_ops]+
-            '--verbose -of '+output_format ,
+            '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
+
+        print(results)
 
         filename = 'itermae/data/test_outputs/barseq_combinations_'
         if input_format in ['fastq','sam']:
@@ -223,9 +245,9 @@ def test_full_combinations_gzipped():
         results = subprocess.run(
             'itermae '+
             '--input itermae/data/barseq.'+input_format+'.gz --gzipped '+
-            '-if '+input_format+' '+
+            '--input-format '+input_format+' '+
             operations_list[which_ops]+
-            '--verbose -of '+output_format ,
+            '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
 
         filename = 'itermae/data/test_outputs/barseq_combinations_'
@@ -247,4 +269,8 @@ def test_full_combinations_gzipped():
             assert str(i) == str(j.rstrip('\n'))
 
 
+
+# Test that SeqHolder can apply_operation, then since we're there testing
+# that it finds the right groups for each seq, and passes or fails filters 
+# appropriately.
 

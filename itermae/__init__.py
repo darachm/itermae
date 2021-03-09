@@ -253,7 +253,7 @@ def open_input_fh(file_string,gzipped=False):
                 "the launcher script.",file=sys.stderr) 
             exit(1)
         else:
-            return open(sys.stdin,'rt')
+            return sys.stdin
     else:
         if gzipped:
             return gzip.open(file_string,'rt',encoding='ascii')
@@ -329,7 +329,8 @@ def write_out_seq(seq,fh,format,which):
         try:
             SeqIO.write(seq, fh, format) 
         except:
-            print("I don't know '"+format+"' format, and it doesn't seem to "+
+            print("Some error happened. It may have tried to print a None, or "+
+                "I don't know '"+format+"' format, and it doesn't seem to "+
                 "work with BioPython.", file=sys.stderr) 
             exit(1)
 
@@ -411,7 +412,7 @@ def chop(
                     ,file=report_fh)
 
     for which, output_record in enumerate(output_records):
-        if output_record[0]:
+        if output_record[0] and output_record[1] is not None:
             write_out_seq(output_record[1], output_fh, out_format, which)
         elif failed_fh != None:
             write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, which)
