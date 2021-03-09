@@ -400,23 +400,21 @@ def chop(
     # So if we should write this per-record report
     if report_fh != None:
         if passed_filters:
-            print( seq_holder.format_report("PassedFilters",
-                    seq_holder.seqs['input'].seq,
-                    str([i is not None for i in output_records]) )
-                ,file=report_fh)
+            for which, output_record in enumerate(output_records):
+                print( seq_holder.format_report(
+                        "PassedFilters", output_record[1], output_record[0])
+                    ,file=report_fh)
         else:
-            print( seq_holder.format_report("FailedAtLeastOutput",
-                    seq_holder.seqs['input'].seq,
-                    str([i is not None for i in output_records]) )
-                ,file=report_fh)
-
-    if failed_fh != None:
-        if not passed_filters:
-            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format,0)
+            for which, output_record in enumerate(output_records):
+                print( seq_holder.format_report(
+                        "FailedAtLeastOneFilter", output_record[1], output_record[0])
+                    ,file=report_fh)
 
     for which, output_record in enumerate(output_records):
-        if output_record is not None:
-            write_out_seq(output_record, output_fh, out_format, which)
+        if output_record[0]:
+            write_out_seq(output_record[1], output_fh, out_format, which)
+        elif failed_fh != None:
+            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, which)
 
 
 
