@@ -120,7 +120,7 @@ def config_from_file(file_path):
                     if 'repeat_max' not in each['marked_groups'][mark].keys():
                         each['marked_groups'][mark]['repeat_max'] = \
                             each['marked_groups'][mark]['repeat']
-                    regex_groups[mark] = (regex_groups[mark]+
+                    regex_groups[mark] = ('('+regex_groups[mark]+')'+
                         '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
                             str(each['marked_groups'][mark]['repeat_max'])+'}'
                         )
