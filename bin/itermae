@@ -7,7 +7,7 @@ import regex
 import time
 import yaml
 
-sys.path.append('../itermae')
+#sys.path.append('../itermae')
 import itermae
 
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
@@ -267,7 +267,7 @@ def config_from_args(args_copy):
     if args_copy.output_id is None:
         args_copy.output_id = ['input.id']
     if args_copy.output_filter is None:
-        args_copy.output_filter = [True]
+        args_copy.output_filter = ['True']
 
     # Normalizing all singletons to same length
     maximum_number_of_outputs = max(
@@ -292,9 +292,10 @@ def config_from_args(args_copy):
         outputs_array = [] 
         for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
             outputs_array.append(
-                {   'id': compile(idz,'<string>','eval'), 
-                    'seq': compile(seqz,'<string>','eval'), 
-                    'filter': compile(filterz,'<string>','eval')
+                {   
+                    'id': compile(idz,'<string>','eval',optimize=2), 
+                    'seq': compile(seqz,'<string>','eval',optimize=2), 
+                    'filter': compile(filterz,'<string>','eval',optimize=2)
                 })
     except:
         print("I failed to build outputs array from the arguments supplied.",
