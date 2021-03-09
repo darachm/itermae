@@ -7,328 +7,24 @@ import regex
 import time
 import yaml
 
-#sys.path.append('../itermae')
+sys.path.append('../itermae')
 import itermae
-
-def check_reserved_name(name,reserved_names=['dummyspacer','input']):
-    if name in reserved_names:
-        print("Hey, you can't name a capture group "+
-            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
-            ", I'm using that/those! Pick a different name.",
-            file=sys.stderr)
-        exit(1)
-    return 0
-
-
-# from http://www.bioinformatics.org/sms/iupac.html
-iupac_codes = { # only used for the configuration file input!
-    'A':'A',
-    'C':'C',
-    'T':'T',
-    'G':'G',
-    'R':'[AG]',
-    'Y':'[CT]',
-    'S':'[GC]',
-    'W':'[AT]',
-    'K':'[GT]',
-    'M':'[AC]',
-    'B':'[CGT]',
-    'D':'[AGT]',
-    'H':'[ACT]',
-    'V':'[ACG]',
-    'N':'[ATCGN]'
-}
-
-
-def config_from_file(file_path):
-    """
-    Tries to parse a configuration YAML file, and form a dictionary to pass into
-    the main itermae reader function.
-    """
-    configuration = {}
-
-    # Verbosely attempt to read it, and I want a hard exit if it's not parsed
-    try:
-        with open(file_path,'r') as f:
-            config = yaml.load(f,Loader=yaml.SafeLoader)
-    except:
-        print('I failed to parse the supplied YAML file path name.',
-            file=sys.stderr)
-        exit(1)
-
-    # Looking for verbosity instruction global, if not global, then in 'outputs'
-    try:
-        try:
-            verbosity = config['verbosity']
-        except:
-            verbosity = config['output']['verbosity']
-    except:
-        verbosity = 0 # else, just keep it bottled it up and tell no one 0_0
-    configuration['verbosity'] = verbosity
-
-    if verbosity >= 1:
-        print("Reading and processing the configuration file '"+
-            str(file_path)+"'.",file=sys.stderr)
-
-    try:
-        matches_array = []
-        if verbosity >= 1:
-            print("Processing each match:",file=sys.stderr)
-        for each in config['matches']:
-            if verbosity >= 1:
-                print("    Taking '"+each['use']+"'. \n",
-                    end="",file=sys.stderr)
-            if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
-                print("Error! It looks like you've repeated a group marking "+
-                    "character to match in multiple places. I do not support "+
-                    "that, use a different character.",file=sys.stderr)
-                exit(1)
-            if len(each['pattern']) != len(each['marking']):
-                print("Error! The pattern and marking you've defined are of "+
-                    "different lengths. I need them to be the same length.",
-                    file=sys.stderr)
-                exit(1)
-            regex_groups = dict()
-            group_order = list() # This is to keep track of the order in which
-                # the groups are being defined in the paired lines
-            for character, mark in zip(each['pattern'],each['marking']):
-                if mark not in group_order:
-                    group_order.append(mark)
-                try:
-                    regex_groups[mark] += iupac_codes[character]
-                        # This is adding on the pattern for a certain marked
-                        # matching group, as zipped above
-                except:
-                    regex_groups[mark] = iupac_codes[character]
-            regex_string = '' # building this now
-            i = 0 # this is for keeping track of the untitled groups
-            for mark in group_order:
-                if 'name_as' in each['marked_groups'][mark].keys():
-                    check_reserved_name(each['marked_groups'][mark]['name_as'])
-                else:
-                    each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
-                    i += 1
-                if verbosity >= 1:
-                    print("        Found group '"+mark+"' with pattern '"+
-                        regex_groups[mark]+"'",end="",file=sys.stderr)
-                try: # trying to build a repeat range, if supplied
-                    if 'repeat_min' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_min'] = \
-                            each['marked_groups'][mark]['repeat']
-                    if 'repeat_max' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_max'] = \
-                            each['marked_groups'][mark]['repeat']
-                    regex_groups[mark] = (regex_groups[mark]+
-                        '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
-                            str(each['marked_groups'][mark]['repeat_max'])+'}'
-                        )
-                    if verbosity >= 1:
-                        print(", repeated between "+
-                            str(each['marked_groups'][mark]['repeat_min'])+
-                            " and "+
-                            str(each['marked_groups'][mark]['repeat_max'])+
-                            " times",end="",file=sys.stderr)
-                except:
-                    pass
-                error_array = [] # Then building the error tolerance spec
-                try: 
-                    error_array.append(
-                        "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
-                except:
-                    pass
-                try: 
-                    error_array.append(
-                        "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
-                except:
-                    pass
-                try: 
-                    error_array.append(
-                        "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
-                except:
-                    pass
-                try: 
-                    error_array.append(
-                        "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
-                except:
-                    pass
-                if len(error_array):
-                    error_string = "{"+','.join(error_array)+"}"
-                else:
-                    error_string = ""
-                if verbosity >= 1:
-                    print(".\n",end="",file=sys.stderr)
-                regex_string += ( "(?<"+
-                    each['marked_groups'][mark]['name_as']+
-                    ">"+regex_groups[mark]+")"+error_string )
-            compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-            matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
-    except:
-        print("I failed to build matches array from the arguments supplied.",
-            file=sys.stderr)
-        exit(1)
-    configuration['matches'] = matches_array
-
-    try:
-        print("Processing output specifications.",file=sys.stderr)
-        output_list = config['output']['list'] # I do need some outputs
-        outputs_array = [] 
-        i = 0 # this is for naming untitled outputs sequentially
-        for each in output_list:
-            try:
-                each['id']
-            except:
-                each['id'] = 'input.id' # default, the input.id
-            try:
-                each['name']
-            except:
-                each['name'] = 'untitled_output_'+str(i)
-                i += 1
-            try:
-                each['filter']
-            except:
-                each['filter'] = 'True' # so will pass if not provided
-            if verbosity >= 1:
-                print("    Parsing output specification of '"+each['name']+"', "+
-                    "ID is '"+each['id']+"', filter outputs it if '"+
-                    each['filter']+"', with sequence derived of '"+
-                    each['seq']+"'.",file=sys.stderr)
-            outputs_array.append( {
-                    'name':each['name'],
-                    'filter':compile('True','<string>','eval',optimize=2),
-                    'id':compile(each['id'],'<string>','eval',optimize=2),
-                    'seq':compile(each['seq'],'<string>','eval',optimize=2)
-                })
-    except:
-        print("I failed to build outputs array from the arguments supplied.",
-            file=sys.stderr)
-        exit(1)
-    configuration['output_groups'] = outputs_array
-
-    try:
-        configuration['input'] = config['input']['from']
-    except:
-        configuration['input'] = 'STDIN'
-    try:
-        configuration['input_format'] = config['input']['format']
-    except:
-        configuration['input_format'] = 'fastq'
-    try:
-        configuration['input_gzipped'] = config['input']['gzipped']
-    except:
-        configuration['input_gzipped'] = False
-
-    try:
-        configuration['output'] = config['output']['to']
-    except:
-        configuration['output'] = 'STDOUT'
-    try:
-        configuration['output_format'] = config['output']['format']
-    except:
-        configuration['output_format'] = 'sam'
-    try:
-        configuration['failed'] = config['output']['failed']
-    except:
-        configuration['failed'] = None
-    try:
-        configuration['report'] = config['output']['report']
-    except:
-        configuration['report'] = None
-
-    return configuration
-
-
-def config_from_args(args_copy):
-    configuration = {}
-
-    verbosity = configuration['verbosity'] = args_copy.verbose
-
-    try:
-        matches_array = []
-        for each in args_copy.match:
-            for capture_name in re.findall('<(.*?)>',each):
-                check_reserved_name(capture_name)
-            try:
-                (input_string, regex_string) = re.split("\s>\s",each.strip())
-            except:
-                input_string = 'input' # default to just use raw input
-                regex_string = each.strip()
-            compiled_regex = regex.compile(
-                regex_string.strip(), # We use this regex
-                regex.BESTMATCH # And we use the BESTMATCH strategy, I think
-                )
-            matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
-    except:
-        print("I failed to build matches array from the arguments supplied.",
-            file=sys.stderr)
-        exit(1)
-    configuration['matches'] = matches_array
-
-    # Adding in defaults
-    if args_copy.output_id is None:
-        args_copy.output_id = ['input.id']
-    if args_copy.output_filter is None:
-        args_copy.output_filter = ['True']
-
-    # Normalizing all singletons to same length
-    maximum_number_of_outputs = max(
-        [len(args_copy.output_id),
-        len(args_copy.output_seq),
-        len(args_copy.output_filter)]
-    )
-    if len(args_copy.output_id) == 1:
-        args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
-    if len(args_copy.output_seq) == 1:
-        args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
-    if len(args_copy.output_filter) == 1:
-        args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
-
-    if not len(args_copy.output_id) == len(args_copy.output_seq) == len(args_copy.output_filter):
-        print("The output IDs, seqs, and filters are of unequal sizes. "+
-            "Make them equal, or only define one (and it will be reused "+
-            "across all.",file=sys.stderr)
-        exit(1)
-
-    try:
-        outputs_array = [] 
-        for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
-            outputs_array.append(
-                {   
-                    'id': compile(idz,'<string>','eval',optimize=2), 
-                    'seq': compile(seqz,'<string>','eval',optimize=2), 
-                    'filter': compile(filterz,'<string>','eval',optimize=2)
-                })
-    except:
-        print("I failed to build outputs array from the arguments supplied.",
-            file=sys.stderr)
-        exit(1)
-    configuration['output_groups'] = outputs_array
-    
-    configuration['input'] = args_copy.input
-    configuration['input_gzipped'] = args_copy.gzipped
-    configuration['input_format'] = args_copy.input_format
-    configuration['output'] = args_copy.output
-    configuration['output_format'] = args_copy.output_format
-    configuration['failed'] = args_copy.failed
-    configuration['report'] = args_copy.report
- 
-    return configuration
-
 
 if __name__ == '__main__':
     ### Using argparse module to define the arguments
-    
+
     # Name and description of this program
     parser = argparse.ArgumentParser(description=""+
         "itermae - iteratively chop up sequences using fuzzy regular expressions. ",
         formatter_class=argparse.RawTextHelpFormatter,
         add_help=False)
-    
+
     parser_config = parser.add_argument_group('Configuration file (optional)')
     parser_config.add_argument("--config",default=False,
         help="File path to the config file. "+
             "If specified, overrules all other relevant arguments. "+
             "See examples/docs.")
-    
+
     parser_input = parser.add_argument_group('Defining input sources')
     parser_input.add_argument("-i","--input",default="STDIN",
         help="""\
@@ -343,7 +39,7 @@ if __name__ == '__main__':
     Specify what format the input is. Default is 
     'FASTQ'. I expect this, or 'SAM', 'FASTA', or 
     'txt'. Case insensitive.""")
-    
+
     parser_output = parser.add_argument_group('Defining where to output')
     parser_output.add_argument("-o","--output",default="STDOUT",
         help="""\
@@ -370,16 +66,16 @@ if __name__ == '__main__':
     inefficient output, but useful for debugging by 
     using with a small subset of the data. 
     (ex: 'head -n 10000 file.fq | tail -n 100' )""")
-    
+
     parser_match = parser.add_argument_group('Matches')
     parser_match.add_argument("-m","--match",action="append",
         help="""\
     Specify what is being matched against, the 
     regular expression, and what groups to extract.
     Format example: 
-    
+
     'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'
-    
+
     If no input group is specified on the left of a
     ' > ' delimiter, then I assume you mean the raw 
     input sequence (ie 'input'). This, and 
@@ -390,11 +86,11 @@ if __name__ == '__main__':
     in the above example). Importantly, all input 
     sequences are converted to uppercase, so write 
     all regex in uppercase. 
-    
+
     For more details, please refer to the README, 
     documentation, and tutorials, and the regex 
     module documentation.""")
-    
+
     parser_groups = parser.add_argument_group(
         'Define groups output',
         """\
@@ -409,9 +105,9 @@ if __name__ == '__main__':
     to a string in Python. You can build this by 
     concatenating together parts of the matched 
     groups, such as:
-    
+
     'input.id+\"_\"+umi.seq' 
-    
+
     to append the index sequence to the input's ID.""")
     parser_groups.add_argument("-os","--output-seq",action="append",
         help="""\
@@ -419,9 +115,9 @@ if __name__ == '__main__':
     form a BioPython SeqRecord, so can be assembled 
     by combining the names of matched groups. 
     For example:
-    
+
     'sample+barcode+umi'
-    
+
     would append the sequence of these three groups 
     together. Group 'dummyspacer' is also available 
     to insert an 'X' into the sequence for 
@@ -432,24 +128,24 @@ if __name__ == '__main__':
     output this group. This must evaluate to True or 
     False (in python), and can use some attributes 
     of the matches or matched groups.  For example: 
-    
+
     'umi.length == 5 & statistics.mean(barcode.quality) >= 30'
-    
+
     will only output when the matched UMI is 5 bases
     and the mean quality of the barcode match is more
     than 30. While
-    
+
     'sample_barcode == \"TTCAC\"'
-    
+
     will only output when the sample_barcode group is
     exactly that sequence. 
-    
+
     See tutorial/documentation for details and more
     examples. 
-    
+
     If there is only one filter defined, it is 
     recycled to filter for all output groups.""")
-    
+
     parser_misc = parser.add_argument_group('')
     parser_misc.add_argument("-v","--verbose",action="count",default=0,
         help="""\
@@ -459,29 +155,29 @@ if __name__ == '__main__':
       -v -v also prints read-level details.
       -v -v -v also prints match-level details.""")
     parser_misc.add_argument("-h","--help",action="store_true",default=False)
-    
+
     # Parse the arguments, turn them into a configuration object, report that
     args = parser.parse_args()
-    
+
     # Necessary since I disabled the auto-'help' argument so that it wouldn't
     # print as part of an 'optional' header
     if args.help:
         parser.print_help()
         exit(1)
-    
+
     if args.config:
         try: 
-            configuration = config_from_file(args.config)
+            configuration = itermae.config_from_file(args.config)
         except:
             print("Configuring from that file '"++"' failed.",file=sys.stderr)
             exit(1)
     else:
         try:
-            configuration = config_from_args(args)
+            configuration = itermae.config_from_args(args)
         except:
             print("Configuring from arguments failed.",file=sys.stderr)
             exit(1)
-    
+
     if configuration['verbosity'] >= 1:
         print('Configured as',file=sys.stderr)
         print('    input from '+configuration['input'],file=sys.stderr)
@@ -503,11 +199,11 @@ if __name__ == '__main__':
             print('        id: '+str(each['id']),file=sys.stderr)
             print('        seq: '+str(each['seq']),file=sys.stderr)
             print('        filter: '+str(each['filter']),file=sys.stderr)
-    
+
     if args.verbose >= 1:
-        print("\n["+str(time.time())+"] : Begin running the reader function "+
+        print("["+str(time.time())+"] : Begin running the reader function "+
             "to initiate chopping...",file=sys.stderr)
-    
+
     itermae.reader(configuration)
         # Configuration should be dict with values under these names:
         # input_file
@@ -520,10 +216,10 @@ if __name__ == '__main__':
         # matches_array
         # outputs_array
         # verbosity
-    
+
     if args.verbose >= 1:
-        print("\n"+"["+str(time.time())+"]"+" : "+
+        print("["+str(time.time())+"]"+" : "+
             "All worked 'till the work is done --- or some fatal error.",
             file=sys.stderr)
-    
+
     exit(0)

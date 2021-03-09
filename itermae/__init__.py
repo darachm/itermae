@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# Importing packages for programming, odds and ends
 import time
 import statistics
 import sys
@@ -12,10 +11,311 @@ import itertools
 import copy
 import io
 
-# Importing packages for the heart of it, fuzzy regex and SeqIO classes
 import regex
 from Bio import SeqIO
 from Bio import Seq, SeqRecord
+
+##### Input configuration handling utilities
+
+def check_reserved_name(name,reserved_names=['dummyspacer','input']):
+    if name in reserved_names:
+        print("Hey, you can't name a capture group "+
+            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
+            ", I'm using that/those! Pick a different name.",
+            file=sys.stderr)
+        exit(1)
+    return 0
+
+
+# from http://www.bioinformatics.org/sms/iupac.html
+iupac_codes = { # only used for the configuration file input!
+    'A':'A', 'C':'C', 'T':'T', 'G':'G',
+    'R':'[AG]', 'Y':'[CT]', 'S':'[GC]', 'W':'[AT]',
+    'K':'[GT]', 'M':'[AC]',
+    'B':'[CGT]', 'D':'[AGT]', 'H':'[ACT]', 'V':'[ACG]',
+    'N':'[ATCGN]' }
+
+
+def config_from_file(file_path):
+    """
+    Tries to parse a configuration YAML file, and form a dictionary to pass into
+    the main itermae reader function.
+    """
+
+    configuration = {}
+    # Verbosely attempt to read it, and I want a hard exit if it's not parsed
+    try:
+        with open(file_path,'r') as f:
+            config = yaml.load(f,Loader=yaml.SafeLoader)
+    except:
+        print('I failed to parse the supplied YAML file path name.',
+            file=sys.stderr)
+        exit(1)
+    # Looking for verbosity instruction global, if not global, then in 'outputs'
+    try:
+        try:
+            verbosity = config['verbosity']
+        except:
+            verbosity = config['output']['verbosity']
+    except:
+        verbosity = 0 # else, just keep it bottled it up and tell no one 0_0
+    configuration['verbosity'] = verbosity
+    # Immediately use that verbostiy
+    if verbosity >= 1:
+        print("Reading and processing the configuration file '"+
+            str(file_path)+"'.",file=sys.stderr)
+
+    # Building array of matches objects, so input and compiled regex
+    try:
+        matches_array = []
+        if verbosity >= 1:
+            print("Processing each match:",file=sys.stderr)
+        for each in config['matches']:
+            try:
+                each['use']
+            except:
+                each['use'] = 'input'
+            if verbosity >= 1:
+                print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
+            if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
+                print("Error in reading yaml config! "+
+                    "It looks like you've repeated a group marking "+
+                    "character to match in multiple places. I do not support "+
+                    "that, use a different character.",file=sys.stderr)
+                exit(1)
+            if len(each['pattern']) != len(each['marking']):
+                print("Error in reading yaml config! "+
+                    "The pattern and marking you've defined are of "+
+                    "different lengths. I need them to be the same length.",
+                    file=sys.stderr)
+                exit(1)
+            regex_groups = dict()
+            group_order = list() # This is to keep track of the order in which
+                # the groups are being defined in the paired lines
+            for character, mark in zip(each['pattern'],each['marking']):
+                if mark not in group_order:
+                    group_order.append(mark)
+                try:
+                    regex_groups[mark] += iupac_codes[character]
+                        # This is adding on the pattern for a certain marked
+                        # matching group, as zipped above, and we're using
+                        # IUPAC codes to turn ambiguity codes into ranges
+                except:
+                    regex_groups[mark] = iupac_codes[character]
+            regex_string = '' # building this now
+            i = 0 # this is for keeping track of the untitled group numbering
+            for mark in group_order:
+                if 'name_as' in each['marked_groups'][mark].keys():
+                    check_reserved_name(each['marked_groups'][mark]['name_as'])
+                else:
+                    each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
+                    i += 1
+                if verbosity >= 1:
+                    print("        Found group '"+mark+"' with pattern '"+
+                        regex_groups[mark]+"'",end="",file=sys.stderr)
+                try: # trying to build a repeat range, if supplied
+                    if 'repeat_min' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_min'] = \
+                            each['marked_groups'][mark]['repeat']
+                    if 'repeat_max' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_max'] = \
+                            each['marked_groups'][mark]['repeat']
+                    regex_groups[mark] = (regex_groups[mark]+
+                        '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
+                            str(each['marked_groups'][mark]['repeat_max'])+'}'
+                        )
+                    if verbosity >= 1:
+                        print(", repeated between "+
+                            str(each['marked_groups'][mark]['repeat_min'])+
+                            " and "+
+                            str(each['marked_groups'][mark]['repeat_max'])+
+                            " times",end="",file=sys.stderr)
+                except:
+                    pass
+                error_array = [] # Then building the error tolerance spec
+                try: 
+                    error_array.append(
+                        "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
+                except:
+                    pass # This part takes up so much room because of try excepts...
+                try: 
+                    error_array.append(
+                        "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
+                except:
+                    pass
+                if len(error_array):
+                    error_string = "{"+','.join(error_array)+"}"
+                else:
+                    error_string = ""
+                if verbosity >= 1:
+                    print(".\n",end="",file=sys.stderr)
+                regex_string += ( "(?<"+each['marked_groups'][mark]['name_as']+
+                    ">"+regex_groups[mark]+")"+error_string )
+            # Okay, then use the built up regex_string to compile it
+            compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
+            # And save it with the input source used, in array
+            matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
+    except:
+        print("During configuration from YAML, I failed to build matches "+
+            "array from the arguments supplied.", file=sys.stderr)
+        exit(1)
+    configuration['matches'] = matches_array
+
+    try:
+        print("Processing output specifications.",file=sys.stderr)
+        output_list = config['output']['list'] # I do need some outputs, or fail
+        outputs_array = [] 
+        i = 0 # this is for naming untitled outputs sequentially
+        for each in output_list:
+            try:
+                each['id']
+            except:
+                each['id'] = 'input.id' # default, the input.id
+            try:
+                each['name']
+            except:
+                each['name'] = 'untitled_output_'+str(i)
+                i += 1
+            try:
+                each['filter']
+            except:
+                each['filter'] = 'True' # so will pass if not provided
+            if verbosity >= 1:
+                print("    Parsing output specification of '"+each['name']+"', "+
+                    "ID is '"+each['id']+"', filter outputs it if '"+
+                    each['filter']+"', with sequence derived of '"+
+                    each['seq']+"'.",file=sys.stderr)
+            outputs_array.append( {
+                    'name':each['name'],
+                    'filter':compile('True','<string>','eval',optimize=2),
+                    'id':compile(each['id'],'<string>','eval',optimize=2),
+                    'seq':compile(each['seq'],'<string>','eval',optimize=2)
+                })
+    except:
+        print("I failed to build outputs array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['output_groups'] = outputs_array
+
+    # Passing through rest or setting defaults
+    try:
+        configuration['input'] = config['input']['from']
+    except:
+        configuration['input'] = 'STDIN'
+    try:
+        configuration['input_format'] = config['input']['format']
+    except:
+        configuration['input_format'] = 'fastq'
+    try:
+        configuration['input_gzipped'] = config['input']['gzipped']
+    except:
+        configuration['input_gzipped'] = False
+    try:
+        configuration['output'] = config['output']['to']
+    except:
+        configuration['output'] = 'STDOUT'
+    try:
+        configuration['output_format'] = config['output']['format']
+    except:
+        configuration['output_format'] = 'sam'
+    try:
+        configuration['failed'] = config['output']['failed']
+    except:
+        configuration['failed'] = None
+    try:
+        configuration['report'] = config['output']['report']
+    except:
+        configuration['report'] = None
+
+    return configuration
+
+
+def config_from_args(args_copy):
+    """
+    Make configuration object from arguments provided. Should be identical
+    to the config_from_yaml output, if supplied the same.
+    """
+
+    configuration = {}
+    verbosity = configuration['verbosity'] = args_copy.verbose
+
+    # Make matches array
+    try:
+        matches_array = []
+        for each in args_copy.match:
+            for capture_name in re.findall('<(.*?)>',each):
+                check_reserved_name(capture_name)
+            try:
+                (input_string, regex_string) = re.split("\s>\s",each.strip())
+            except:
+                input_string = 'input' # default to just use raw input
+                regex_string = each.strip()
+            compiled_regex = regex.compile(
+                regex_string.strip(), # We use this regex
+                regex.BESTMATCH # And we use the BESTMATCH strategy, I think
+                )
+            matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
+    except:
+        print("I failed to build matches array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['matches'] = matches_array
+
+    # Adding in defaults for outputs, may be redundant with argparse settings...
+    if args_copy.output_id is None:
+        args_copy.output_id = ['input.id']
+    if args_copy.output_filter is None:
+        args_copy.output_filter = ['True']
+
+    # Normalizing all singletons to same length
+    maximum_number_of_outputs = max( [len(args_copy.output_id), 
+        len(args_copy.output_seq), len(args_copy.output_filter)] )
+    if len(args_copy.output_id) == 1:
+        args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
+    if len(args_copy.output_seq) == 1:
+        args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
+    if len(args_copy.output_filter) == 1:
+        args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
+    if not len(args_copy.output_id) == len(args_copy.output_seq) == len(args_copy.output_filter):
+        print("The output IDs, seqs, and filters are of unequal sizes. "+
+            "Make them equal, or only define one (and it will be reused "+
+            "across all).",file=sys.stderr)
+        exit(1)
+
+    try:
+        outputs_array = [] 
+        for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
+            outputs_array.append( {   
+                    'id': compile(idz,'<string>','eval',optimize=2), 
+                    'seq': compile(seqz,'<string>','eval',optimize=2), 
+                    'filter': compile(filterz,'<string>','eval',optimize=2) })
+    except:
+        print("I failed to build outputs array from the arguments supplied.",
+            file=sys.stderr)
+        exit(1)
+    configuration['output_groups'] = outputs_array
+    
+    # Passing through the rest, defaults should be set in argparse defs
+    configuration['input'] = args_copy.input
+    configuration['input_gzipped'] = args_copy.gzipped
+    configuration['input_format'] = args_copy.input_format
+    configuration['output'] = args_copy.output
+    configuration['output_format'] = args_copy.output_format
+    configuration['failed'] = args_copy.failed
+    configuration['report'] = args_copy.report
+ 
+    return configuration
+
 
 class MatchScores:
     """
