@@ -34,7 +34,7 @@ iupac_codes = { # only used for the configuration file input!
     'R':'[AG]', 'Y':'[CT]', 'S':'[GC]', 'W':'[AT]',
     'K':'[GT]', 'M':'[AC]',
     'B':'[CGT]', 'D':'[AGT]', 'H':'[ACT]', 'V':'[ACG]',
-    'N':'[ATCGN]' }
+    'N':'[ATCGN]', '*':'.*', '+':'.+' }
 
 
 def config_from_file(file_path):
@@ -106,10 +106,10 @@ def config_from_file(file_path):
             regex_string = '' # building this now
             i = 0 # this is for keeping track of the untitled group numbering
             for mark in group_order:
-                if 'name_as' in each['marked_groups'][mark].keys():
-                    check_reserved_name(each['marked_groups'][mark]['name_as'])
+                if 'name' in each['marked_groups'][mark].keys():
+                    check_reserved_name(each['marked_groups'][mark]['name'])
                 else:
-                    each['marked_groups'][mark]['name_as'] = "untitled_group"+str(i)
+                    each['marked_groups'][mark]['name'] = "untitled_group"+str(i)
                     i += 1
                 if verbosity >= 1:
                     print("        Found group '"+mark+"' with pattern '"+
@@ -160,7 +160,7 @@ def config_from_file(file_path):
                     error_string = ""
                 if verbosity >= 1:
                     print(".\n",end="",file=sys.stderr)
-                regex_string += ( "(?<"+each['marked_groups'][mark]['name_as']+
+                regex_string += ( "(?<"+each['marked_groups'][mark]['name']+
                     ">"+regex_groups[mark]+")"+error_string )
             # Okay, then use the built up regex_string to compile it
             compiled_regex = regex.compile( regex_string, regex.BESTMATCH )

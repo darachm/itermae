@@ -19,13 +19,13 @@ matches:
         marking: ABBBBBBBBBBBBBBBCDDDDDDDDD # Then specify what each group is
         marked_groups:  # Then use the same character from marking to denote
             A:          # additional info about the group, saveAs names, length
-                name_as: sampleIndex # Name to save it as, optional
+                name: sampleIndex # Name to save it as, optional
                 repeat: 5            # How many times to repeat it, either this
             B:                       # Or there's min max specification below
-                name_as: prefix
+                name: prefix
                 allowed_errors: 2 # How many errors are tolerated in this match?
             C:                    # Below is example where indels/subs specified
-                name_as: barcode
+                name: barcode
                 repeat_min: 18 # Min or max range for repeats
                 repeat_max: 22
             D:  
@@ -38,7 +38,7 @@ matches:
         marking: A
         marked_groups:
             A:
-                name_as: first_five_barcode 
+                name: first_five_barcode 
                 repeat: 5
 
 # Defining what to output
