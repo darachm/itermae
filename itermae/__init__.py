@@ -27,7 +27,7 @@ def check_reserved_name(name,reserved_names=['dummyspacer','input']):
             (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
             ", I'm using that/those! Pick a different name.",
             file=sys.stderr)
-        exit(1)
+        raise
 
 
 # IUPAC dictionary for translating codes to regex.
@@ -55,7 +55,7 @@ def config_from_file(file_path):
     except:
         print('I failed to parse the supplied YAML file path name.',
             file=sys.stderr)
-        exit(1)
+        raise
     # Looking for verbosity instruction global, if not global, then in 'outputs'
     try:
         try:
@@ -86,13 +86,13 @@ def config_from_file(file_path):
                 "It looks like you've repeated a group marking "+
                 "character to match in multiple places. I do not support "+
                 "that, use a different character.",file=sys.stderr)
-            exit(1)
+            raise
         if len(each['pattern']) != len(each['marking']):
             print("Error in reading yaml config! "+
                 "The pattern and marking you've defined are of "+
                 "different lengths. I need them to be the same length.",
                 file=sys.stderr)
-            exit(1)
+            raise
         regex_groups = dict()
         group_order = list() # This is to keep track of the order in which
             # the groups are being defined in the paired lines
@@ -264,7 +264,7 @@ def config_from_args(args_copy):
     except:
         print("I failed to build matches array from the arguments supplied.",
             file=sys.stderr)
-        exit(1)
+        raise
     configuration['matches'] = matches_array
 
     # Adding in defaults for outputs, may be redundant with argparse settings...
@@ -286,7 +286,7 @@ def config_from_args(args_copy):
         print("The output IDs, seqs, and filters are of unequal sizes. "+
             "Make them equal, or only define one (and it will be reused "+
             "across all).",file=sys.stderr)
-        exit(1)
+        raise
 
     try:
         outputs_array = [] 
@@ -298,7 +298,7 @@ def config_from_args(args_copy):
     except:
         print("I failed to build outputs array from the arguments supplied.",
             file=sys.stderr)
-        exit(1)
+        raise
     configuration['output_groups'] = outputs_array
     
     # Passing through the rest, defaults should be set in argparse defs
@@ -486,10 +486,6 @@ class SeqHolder:
             "\"" ) # See group_stats method for what these are (start stop len)
 
 
-def phred_number_array_to_joined_string(x):
-    return str("".join([ phred_number_to_letter(i) for i in x]))
-
-
 def format_sam_record(record_id, sequence, qualities, tags,
         flag='0', reference_name='*', 
         mapping_position='0', mapping_quality='255', cigar_string='*',
@@ -517,6 +513,10 @@ def phred_letter_to_number(x):
 
 def phred_number_to_letter(x):
     return chr(x+33)
+
+
+def phred_number_array_to_joined_string(x):
+    return str("".join([ phred_number_to_letter(i) for i in x]))
 
 
 def read_sam_file(fh):
@@ -567,7 +567,7 @@ def open_input_fh(file_string,gzipped=False):
             print("I can't handle gzipped inputs on STDIN ! "+
                 "You shouldn't see this error, it shoulda been caught in "+
                 "the launcher script.",file=sys.stderr) 
-            exit(1)
+            raise
         else:
             return sys.stdin
     else:

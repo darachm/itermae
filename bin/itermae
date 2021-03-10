@@ -21,9 +21,10 @@ if __name__ == '__main__':
 
     parser_config = parser.add_argument_group('Configuration file (optional)')
     parser_config.add_argument("--config",default=False,
-        help="File path to the config file. "+
-            "If specified, overrules all other relevant arguments. "+
-            "See examples/docs.")
+        help="""\
+    File path to the config file. If specified, 
+    overrules all other relevant arguments. 
+    See examples/docs. """)
 
     parser_input = parser.add_argument_group('Defining input sources')
     parser_input.add_argument("-i","--input",default="STDIN",
@@ -83,9 +84,10 @@ if __name__ == '__main__':
     docs). Each match is done in the order you 
     specify, so later matches can use previous 
     matching groups as inputs (like 'inputGroup' 
-    in the above example). Importantly, all input 
-    sequences are converted to uppercase, so write 
-    all regex in uppercase. 
+    in the above example). 
+
+    *Importantly*, all input sequences are converted to 
+    uppercase, so write all regex in uppercase !
 
     For more details, please refer to the README, 
     documentation, and tutorials, and the regex 
@@ -171,13 +173,13 @@ if __name__ == '__main__':
         except:
             print("Configuring from that file '"+args.config+"' failed.",
                 file=sys.stderr)
-            exit(1)
+            raise
     else:
         try:
             configuration = itermae.config_from_args(args)
         except:
             print("Configuring from arguments failed.",file=sys.stderr)
-            exit(1)
+            raise
 
     if configuration['verbosity'] >= 1:
         print('Configured as',file=sys.stderr)
