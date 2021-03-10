@@ -16,11 +16,59 @@ import itertools
 # Required for full-file input/output testing
 import subprocess
 
-#
-#
-# Ye Tests
-#
-#
+#### Ye Tests
+
+# Test that the configuration scripts don't do horrible things to the configs
+def test_configuration_args():
+    class A: pass # Here I just need a burner object that accepts new attributes
+    args_test = A()
+    args_test.input = 'itermae/data/barseq.fastq'
+    args_test.input_format = 'fastq'
+    args_test.gzipped = False
+    args_test.match = ["input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}"]
+    args_test.output_seq = ["barcode"]
+    args_test.output_id = ["input.id"]
+    args_test.output_filter = None
+    args_test.verbose = 1
+    args_test.output = "test.fastq"
+    args_test.output_format = "fastq"
+    args_test.failed = 'failed.fastq'
+    args_test.report = 'report.csv'
+    configd = itermae.config_from_args(args_test)
+    del configd['output_groups']
+    del configd['matches']
+    configd_test = {
+            'verbosity': 1, 
+            'input': 'itermae/data/barseq.fastq', 
+            'input_gzipped': False, 
+            'input_format': 'fastq', 
+            'output': 'test.fastq', 
+            'output_format': 'fastq', 
+            'failed': 'failed.fastq', 
+            'report': 'report.csv'
+        }
+    for i in configd_test.keys():
+        assert configd[i] == configd_test[i]
+
+# Test that the configuration scripts don't do horrible things to the configs
+def test_configuration_file():
+    configd = itermae.config_from_file("itermae/data/example_schema.yml")
+    del configd['output_groups']
+    del configd['matches']
+    configd_test = {
+            'verbosity': 1, 
+            'input': 'STDIN',
+            'input_gzipped': False, 
+            'input_format': 'fastq', 
+            'output': 'STDOUT',
+            'output_format': 'sam', 
+            'failed': 'failed', 
+            'report': 'report.csv'
+        }
+    for i in configd_test.keys():
+        assert configd[i] == configd_test[i]
+
+
 
 # Test MatchScores class
 
@@ -181,6 +229,21 @@ def test_seqholder_match_filter(fastqfile):
 #
 #
 
+# As it says on the tin
+def test_full_combinations_yml():
+    results = subprocess.run(
+        'itermae --config itermae/data/test_schema.yml',
+        shell=True,capture_output=True,encoding='utf-8')
+    filename = 'itermae/data/test_outputs/barseq_ymltest.sam'
+
+#    with open(filename,'w') as f:
+#        f.write(results.stdout)
+
+    with open(filename,'r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
 one_operation_string = (
     '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
     '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '
@@ -270,7 +333,4 @@ def test_full_combinations_gzipped():
 
 
 
-# Test that SeqHolder can apply_operation, then since we're there testing
-# that it finds the right groups for each seq, and passes or fails filters 
-# appropriately.
 
