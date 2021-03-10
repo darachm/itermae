@@ -2,8 +2,6 @@
 
 import pytest
 
-import sys
-sys.path.append('../itermae')
 import itermae
 
 # Required for testing apply_operation, as regex is generated in the command
@@ -18,7 +16,9 @@ import subprocess
 
 #### Ye Tests
 
-# Test that the configuration scripts don't do horrible things to the configs
+# Test that the configuration functions don't do horrible things to the configs
+# These are just called in the taking of arguments into making a configuration
+# dictionary for the 'reader' function to use.
 def test_configuration_args():
     class A: pass # Here I just need a burner object that accepts new attributes
     args_test = A()
@@ -35,8 +35,8 @@ def test_configuration_args():
     args_test.failed = 'failed.fastq'
     args_test.report = 'report.csv'
     configd = itermae.config_from_args(args_test)
-    del configd['output_groups']
-    del configd['matches']
+    del configd['output_groups'] # I don't know how to compare these on value 
+    del configd['matches']       # without them being same address, so delete
     configd_test = {
             'verbosity': 1, 
             'input': 'itermae/data/barseq.fastq', 
@@ -50,7 +50,7 @@ def test_configuration_args():
     for i in configd_test.keys():
         assert configd[i] == configd_test[i]
 
-# Test that the configuration scripts don't do horrible things to the configs
+# Same test for coming from a YML file
 def test_configuration_file():
     configd = itermae.config_from_file("itermae/data/example_schema.yml")
     del configd['output_groups']
@@ -68,14 +68,10 @@ def test_configuration_file():
     for i in configd_test.keys():
         assert configd[i] == configd_test[i]
 
-
-
 # Test MatchScores class
-
 @pytest.fixture
 def matchscore():
     return itermae.MatchScores(1,2,3)
-
 def test_matchscore_subs(matchscore):
     assert matchscore.substitutions == 1
 def test_matchscore_ins(matchscore):
@@ -86,7 +82,6 @@ def test_matchscore_flatten(matchscore):
     assert matchscore.flatten() == "1_2_3"
 
 # Test GroupStats class
-
 @pytest.fixture
 def groupstats():
     return itermae.GroupStats(5,15,[36]*10)
@@ -109,9 +104,7 @@ def test_groupstats_flatten(groupstats):
 def fastqfile():
     return SeqIO.parse("itermae/data/toy.fastq","fastq")
 
-#
-# SeqHolder Tests
-#
+## SeqHolder Tests
 
 # Test SeqHolder verbosity
 def test_seqholder_verbosity(fastqfile):
@@ -132,7 +125,6 @@ def test_seqholder_dummy(fastqfile):
 # Test that SeqHolder can apply_operation, then since we're there testing
 # that it finds the right groups for each seq, and passes or fails filters 
 # appropriately.
-# Shortread FASTQ input
 def test_seqholder_match_filter(fastqfile):
     for seq, pos_pass, qual_pass, seq_pass, sequences_found, \
         seq_targets, report_targets \
@@ -223,27 +215,22 @@ def test_seqholder_match_filter(fastqfile):
         else:
             assert seq_targets == ( built_output.id, built_output.seq ) 
 
-#
-#
-# Full Tests
-#
-#
+## Full Tests
 
-# As it says on the tin
+# Using the YML configuration file, but only with one format of output tested
 def test_full_combinations_yml():
     results = subprocess.run(
         'itermae --config itermae/data/test_schema.yml',
         shell=True,capture_output=True,encoding='utf-8')
     filename = 'itermae/data/test_outputs/barseq_ymltest.sam'
-
 #    with open(filename,'w') as f:
 #        f.write(results.stdout)
-
     with open(filename,'r') as f:
         expected_file = f.readlines()
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
 
+# Operations for argument-specified options
 one_operation_string = (
     '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
     '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '
@@ -255,11 +242,7 @@ two_operation_string = (
     '-os "upPrime+barcode+downPrime" -oi "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '
     )
 
-#
-# shortread FASTQ, one operation
-#
-
-# As it says on the tin
+# Each operation applied to shortread FASTQ, non-gzipped
 def test_full_combinations():
     operations_list = [one_operation_string, two_operation_string]
     for input_format, which_ops, output_format in itertools.product(
@@ -267,7 +250,6 @@ def test_full_combinations():
             [0,1],
             ['fastq','fasta','sam','txt'],
         ):
-
         results = subprocess.run(
             'cat itermae/data/barseq.'+input_format+' | '+
             'itermae '+
@@ -275,9 +257,6 @@ def test_full_combinations():
             operations_list[which_ops]+
             '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
-
-        print(results)
-
         filename = 'itermae/data/test_outputs/barseq_combinations_'
         if input_format in ['fastq','sam']:
             filename += 'with_qualities_'
@@ -287,16 +266,14 @@ def test_full_combinations():
             filename += 'with_seq_as_id_'
         filename += str(which_ops+1)+'_ops'
         filename += '.'+output_format
-
 #        with open(filename,'w') as f:
 #            f.write(results.stdout)
-
         with open(filename,'r') as f:
             expected_file = f.readlines()
         for i,j in zip(results.stdout.split('\n'),expected_file):
             assert str(i) == str(j.rstrip('\n'))
 
-# As it says on the tin
+# Each operation applied to shortread FASTQ, gzipped
 def test_full_combinations_gzipped():
     operations_list = [one_operation_string, two_operation_string]
     for input_format, which_ops, output_format in itertools.product(
@@ -304,7 +281,6 @@ def test_full_combinations_gzipped():
             [0,1],
             ['fastq','fasta','sam','txt'],
         ):
-
         results = subprocess.run(
             'itermae '+
             '--input itermae/data/barseq.'+input_format+'.gz --gzipped '+
@@ -312,7 +288,6 @@ def test_full_combinations_gzipped():
             operations_list[which_ops]+
             '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
-
         filename = 'itermae/data/test_outputs/barseq_combinations_'
         if input_format in ['fastq','sam']:
             filename += 'with_qualities_'
@@ -322,15 +297,11 @@ def test_full_combinations_gzipped():
             filename += 'with_seq_as_id_'
         filename += str(which_ops+1)+'_ops'
         filename += '.'+output_format
-
 #        with open(filename,'w') as f:
 #            f.write(results.stdout)
-
         with open(filename,'r') as f:
             expected_file = f.readlines()
         for i,j in zip(results.stdout.split('\n'),expected_file):
             assert str(i) == str(j.rstrip('\n'))
-
-
 
 
