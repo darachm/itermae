@@ -636,8 +636,7 @@ def reader(configuration):
 def write_out_seq(seq,fh,format,which):
     if format == "sam":
         print( format_sam_record( seq.id, str(seq.seq),
-                ''.join([chr(i+33) for i in 
-                        seq.letter_annotations['phred_quality']]),
+                phred_number_array_to_joined_string(seq.letter_annotations['phred_quality']),
                 "IE:Z:"+str(which) ),file=fh)
     elif format == "txt":
         print( str(seq.seq), file=fh)
