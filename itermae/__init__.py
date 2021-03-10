@@ -644,18 +644,11 @@ def write_out_seq(seq,fh,format,which):
         SeqIO.write(seq, fh, format) 
 
 
-def chop(
-    seq_holder,
-    operations_array, outputs_array, 
-    out_format, input_format,
-    output_fh, failed_fh, report_fh,
-    verbosity
-    ):
+def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
+    output_fh, failed_fh, report_fh, verbosity ):
     """
     This one takes each record, applies the operations, evaluates the filters,
     generates outputs, and writes them to output handles as appropriate.
-    It's a bit messy, so I've tried to make it clear with comments to break it
-    up into sections.
     """
 
     # If qualities are missing, add them as just 40
@@ -664,8 +657,7 @@ def chop(
 
         if verbosity >= 2:
             print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
-                "to sequence.",
-                file=sys.stderr)
+                "to sequence.", file=sys.stderr)
 
     # For chop grained verbosity, report
     if verbosity >= 2:
@@ -680,21 +672,15 @@ def chop(
         operations_array[0]['input']+"` in the holder, so breaking. You should "+
         "have the first operation start with `input` as a source." )
 
-    # ITERATING THROUGH THE MATCHING
-
-    # First, apply each operation !
+    # Next, iterate through the matches, applying each one
     for operation_number, operation in enumerate(operations_array):
 
         seq_holder.apply_operation( 'match_'+str(operation_number),
                 operation['input'], operation['regex'] )
 
-    # Now seq_holder should have a lot of goodies, match scores and group stats
-    # and matched sequences groups. All these values allow us to apply filters :
-
-    ### Filtering and generating outputs
-
-    # First unpacking matches and scores into an internal environment for
-    # the filter 'eval's
+    # Now seq_holder should have a lot of matches, match scores and group stats,
+    # and matched sequences groups. All these values allow us to apply filters
+    # We unpack matches and scores into an internal environment for the filters
     seq_holder.build_context()
 
     # Then we eval the filters and build outputs, for each output
@@ -705,21 +691,22 @@ def chop(
                 seq_holder.build_output(each_output) 
             ) )
 
+    # This is just if we pass all the filters provided
     passed_filters = not any([ i == False for i,j in output_records ])
 
-    # So if we should write this per-record report
+    # Then we can make the report CSV if asked for (mainly for debugging/tuning)
     if report_fh != None:
         if passed_filters:
             for which, output_record in enumerate(output_records):
-                print( seq_holder.format_report(
-                        "PassedFilters", output_record[1], output_record[0])
-                    ,file=report_fh)
+                print( seq_holder.format_report( "PassedFilters", 
+                        output_record[1], output_record[0]) ,file=report_fh)
         else:
             for which, output_record in enumerate(output_records):
-                print( seq_holder.format_report(
-                        "FailedAtLeastOneFilter", output_record[1], output_record[0])
-                    ,file=report_fh)
+                print( seq_holder.format_report( "FailedAtLeastOneFilter", 
+                        output_record[1], output_record[0]) ,file=report_fh)
 
+    # Finally, write all the outputs, to main stream if passed, otherwise to
+    # the failed output (if provided)
     for which, output_record in enumerate(output_records):
         if output_record[0] and output_record[1] is not None:
             write_out_seq(output_record[1], output_fh, out_format, which)
