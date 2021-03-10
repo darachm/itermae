@@ -19,15 +19,19 @@ from Bio import Seq, SeqRecord
 ##### Input configuration handling utilities
 
 def check_reserved_name(name,reserved_names=['dummyspacer','input']):
+    """
+    This is just to check that the name is not one of these, if so, error out.
+    """
     if name in reserved_names:
         print("Hey, you can't name a capture group "+
             (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
             ", I'm using that/those! Pick a different name.",
             file=sys.stderr)
         exit(1)
-    return 0
 
 
+# IUPAC dictionary for translating codes to regex.
+# Note the inclusion of * and + for repeats.
 # from http://www.bioinformatics.org/sms/iupac.html
 iupac_codes = { # only used for the configuration file input!
     'A':'A', 'C':'C', 'T':'T', 'G':'G',
@@ -67,145 +71,136 @@ def config_from_file(file_path):
             str(file_path)+"'.",file=sys.stderr)
 
     # Building array of matches objects, so input and compiled regex
-    try:
-        matches_array = []
+    matches_array = []
+    if verbosity >= 1:
+        print("Processing each match:",file=sys.stderr)
+    for each in config['matches']:
+        try:
+            each['use']
+        except:
+            each['use'] = 'input'
         if verbosity >= 1:
-            print("Processing each match:",file=sys.stderr)
-        for each in config['matches']:
+            print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
+        if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
+            print("Error in reading yaml config! "+
+                "It looks like you've repeated a group marking "+
+                "character to match in multiple places. I do not support "+
+                "that, use a different character.",file=sys.stderr)
+            exit(1)
+        if len(each['pattern']) != len(each['marking']):
+            print("Error in reading yaml config! "+
+                "The pattern and marking you've defined are of "+
+                "different lengths. I need them to be the same length.",
+                file=sys.stderr)
+            exit(1)
+        regex_groups = dict()
+        group_order = list() # This is to keep track of the order in which
+            # the groups are being defined in the paired lines
+        for character, mark in zip(each['pattern'],each['marking']):
+            if mark not in group_order:
+                group_order.append(mark)
             try:
-                each['use']
+                regex_groups[mark] += iupac_codes[character.upper()]
+                    # This is adding on the pattern for a certain marked
+                    # matching group, as zipped above, and we're using
+                    # IUPAC codes to turn ambiguity codes into ranges
+                    # Note that it is converted to upper case!
             except:
-                each['use'] = 'input'
+                regex_groups[mark] = iupac_codes[character.upper()]
+        regex_string = '' # building this now
+        i = 0 # this is for keeping track of the untitled group numbering
+        for mark in group_order:
+            if 'name' in each['marked_groups'][mark].keys():
+                check_reserved_name(each['marked_groups'][mark]['name'])
+            else:
+                each['marked_groups'][mark]['name'] = "untitled_group"+str(i)
+                i += 1
             if verbosity >= 1:
-                print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
-            if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
-                print("Error in reading yaml config! "+
-                    "It looks like you've repeated a group marking "+
-                    "character to match in multiple places. I do not support "+
-                    "that, use a different character.",file=sys.stderr)
-                exit(1)
-            if len(each['pattern']) != len(each['marking']):
-                print("Error in reading yaml config! "+
-                    "The pattern and marking you've defined are of "+
-                    "different lengths. I need them to be the same length.",
-                    file=sys.stderr)
-                exit(1)
-            regex_groups = dict()
-            group_order = list() # This is to keep track of the order in which
-                # the groups are being defined in the paired lines
-            for character, mark in zip(each['pattern'],each['marking']):
-                if mark not in group_order:
-                    group_order.append(mark)
-                try:
-                    regex_groups[mark] += iupac_codes[character]
-                        # This is adding on the pattern for a certain marked
-                        # matching group, as zipped above, and we're using
-                        # IUPAC codes to turn ambiguity codes into ranges
-                except:
-                    regex_groups[mark] = iupac_codes[character]
-            regex_string = '' # building this now
-            i = 0 # this is for keeping track of the untitled group numbering
-            for mark in group_order:
-                if 'name' in each['marked_groups'][mark].keys():
-                    check_reserved_name(each['marked_groups'][mark]['name'])
-                else:
-                    each['marked_groups'][mark]['name'] = "untitled_group"+str(i)
-                    i += 1
+                print("        Found group '"+mark+"' with pattern '"+
+                    regex_groups[mark]+"'",end="",file=sys.stderr)
+            try: # trying to build a repeat range, if supplied
+                if 'repeat_min' not in each['marked_groups'][mark].keys():
+                    each['marked_groups'][mark]['repeat_min'] = \
+                        each['marked_groups'][mark]['repeat']
+                if 'repeat_max' not in each['marked_groups'][mark].keys():
+                    each['marked_groups'][mark]['repeat_max'] = \
+                        each['marked_groups'][mark]['repeat']
+                regex_groups[mark] = ('('+regex_groups[mark]+')'+
+                    '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
+                        str(each['marked_groups'][mark]['repeat_max'])+'}'
+                    )
                 if verbosity >= 1:
-                    print("        Found group '"+mark+"' with pattern '"+
-                        regex_groups[mark]+"'",end="",file=sys.stderr)
-                try: # trying to build a repeat range, if supplied
-                    if 'repeat_min' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_min'] = \
-                            each['marked_groups'][mark]['repeat']
-                    if 'repeat_max' not in each['marked_groups'][mark].keys():
-                        each['marked_groups'][mark]['repeat_max'] = \
-                            each['marked_groups'][mark]['repeat']
-                    regex_groups[mark] = ('('+regex_groups[mark]+')'+
-                        '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
-                            str(each['marked_groups'][mark]['repeat_max'])+'}'
-                        )
-                    if verbosity >= 1:
-                        print(", repeated between "+
-                            str(each['marked_groups'][mark]['repeat_min'])+
-                            " and "+
-                            str(each['marked_groups'][mark]['repeat_max'])+
-                            " times",end="",file=sys.stderr)
-                except:
-                    pass
-                error_array = [] # Then building the error tolerance spec
-                try: 
-                    error_array.append(
-                        "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
-                except:
-                    pass # This part takes up so much room because of try excepts...
-                try: 
-                    error_array.append(
-                        "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
-                except:
-                    pass
-                try: 
-                    error_array.append(
-                        "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
-                except:
-                    pass
-                try: 
-                    error_array.append(
-                        "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
-                except:
-                    pass
-                if len(error_array):
-                    error_string = "{"+','.join(error_array)+"}"
-                else:
-                    error_string = ""
-                if verbosity >= 1:
-                    print(".\n",end="",file=sys.stderr)
-                regex_string += ( "(?<"+each['marked_groups'][mark]['name']+
-                    ">"+regex_groups[mark]+")"+error_string )
-            # Okay, then use the built up regex_string to compile it
-            compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-            # And save it with the input source used, in array
-            matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
-    except:
-        print("During configuration from YAML, I failed to build matches "+
-            "array from the arguments supplied.", file=sys.stderr)
-        exit(1)
+                    print(", repeated between "+
+                        str(each['marked_groups'][mark]['repeat_min'])+
+                        " and "+
+                        str(each['marked_groups'][mark]['repeat_max'])+
+                        " times",end="",file=sys.stderr)
+            except:
+                pass
+            error_array = [] # Then building the error tolerance spec
+            try: 
+                error_array.append(
+                    "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
+            except:
+                pass # This part takes up so much room because of try excepts...
+            try: 
+                error_array.append(
+                    "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
+            except:
+                pass
+            try: 
+                error_array.append(
+                    "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
+            except:
+                pass
+            try: 
+                error_array.append(
+                    "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
+            except:
+                pass
+            if len(error_array):
+                error_string = "{"+','.join(error_array)+"}"
+            else:
+                error_string = ""
+            if verbosity >= 1:
+                print(".\n",end="",file=sys.stderr)
+            regex_string += ( "(?<"+each['marked_groups'][mark]['name']+
+                ">"+regex_groups[mark]+")"+error_string )
+        # Okay, then use the built up regex_string to compile it
+        compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
+        # And save it with the input source used, in array
+        matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
     configuration['matches'] = matches_array
 
-    try:
-        print("Processing output specifications.",file=sys.stderr)
-        output_list = config['output']['list'] # I do need some outputs, or fail
-        outputs_array = [] 
-        i = 0 # this is for naming untitled outputs sequentially
-        for each in output_list:
-            try:
-                each['id']
-            except:
-                each['id'] = 'input.id' # default, the input.id
-            try:
-                each['name']
-            except:
-                each['name'] = 'untitled_output_'+str(i)
-                i += 1
-            try:
-                each['filter']
-            except:
-                each['filter'] = 'True' # so will pass if not provided
-            if verbosity >= 1:
-                print("    Parsing output specification of '"+each['name']+"', "+
-                    "ID is '"+each['id']+"', filter outputs it if '"+
-                    each['filter']+"', with sequence derived of '"+
-                    each['seq']+"'.",file=sys.stderr)
-            outputs_array.append( {
-                    'name':each['name'],
-                    'filter':compile('True','<string>','eval',optimize=2),
-                    'id':compile(each['id'],'<string>','eval',optimize=2),
-                    'seq':compile(each['seq'],'<string>','eval',optimize=2)
-                })
-    except:
-        print("I failed to build outputs array from the arguments supplied.",
-            file=sys.stderr)
-        exit(1)
+    print("Processing output specifications.",file=sys.stderr)
+    output_list = config['output']['list'] # I do need some outputs, or fail
+    outputs_array = [] 
+    i = 0 # this is for naming untitled outputs sequentially
+    for each in output_list:
+        try:
+            each['id']
+        except:
+            each['id'] = 'input.id' # default, the input.id
+        try:
+            each['name']
+        except:
+            each['name'] = 'untitled_output_'+str(i)
+            i += 1
+        try:
+            each['filter']
+        except:
+            each['filter'] = 'True' # so will pass if not provided
+        if verbosity >= 1:
+            print("    Parsing output specification of '"+each['name']+"', "+
+                "ID is '"+each['id']+"', filter outputs it if '"+
+                each['filter']+"', with sequence derived of '"+
+                each['seq']+"'.",file=sys.stderr)
+        outputs_array.append( {
+                'name':each['name'],
+                'filter':compile('True','<string>','eval',optimize=2),
+                'id':compile(each['id'],'<string>','eval',optimize=2),
+                'seq':compile(each['seq'],'<string>','eval',optimize=2)
+            })
     configuration['output_groups'] = outputs_array
 
     # Passing through rest or setting defaults
@@ -243,8 +238,8 @@ def config_from_file(file_path):
 
 def config_from_args(args_copy):
     """
-    Make configuration object from arguments provided. Should be identical
-    to the config_from_yaml output, if supplied the same.
+    Make configuration object from arguments provided. Should be the same as 
+    the config_from_yaml output, if supplied the same.
     """
 
     configuration = {}
@@ -328,8 +323,7 @@ class MatchScores:
         self.insertions = insertions
         self.deletions = deletions
     def flatten(self):
-        return str(self.substitutions)+"_"+\
-            str(self.insertions)+"_"+\
+        return str(self.substitutions)+"_"+str(self.insertions)+"_"+\
             str(self.deletions)
 
 
@@ -385,7 +379,7 @@ class SeqHolder:
                 file=sys.stderr)
 
         # Here we execute the actual meat of the business.
-        # Note that the input is made uppercase.
+        # Note that the input is made uppercase!
         fuzzy_match = regex.search( str(self.seqs[input_group].seq).upper() )
 
         if self.verbosity >= 3:
@@ -473,15 +467,27 @@ class SeqHolder:
         """
         This is for formatting a standard report line for the reporting function
         """
-        
+
+        if output_seq is None:
+            output_seq = SeqRecord.SeqRecord('X',
+                id='ERROR',
+                letter_annotations={'phred_quality':[0]})
+
         return ( "\""+label+"\",\""+
             str(self.seqs['input'].id)+"\",\""+
             str(self.seqs['input'].seq)+"\",\""+
-            str(output_seq)+"\",\""+
+            phred_number_array_to_joined_string(self.seqs['input'].letter_annotations['phred_quality'])+"\",\""+
+            str(output_seq.id)+"\",\""+
+            str(output_seq.seq)+"\",\""+
+            phred_number_array_to_joined_string(output_seq.letter_annotations['phred_quality'])+"\",\""+
             str(evaluated_filters)+"\",\""+
             "-".join([ i+"_"+self.group_stats[i].flatten() 
                         for i in self.group_stats ] )+
-            "\"" )
+            "\"" ) # See group_stats method for what these are (start stop len)
+
+
+def phred_number_array_to_joined_string(x):
+    return str("".join([ phred_number_to_letter(i) for i in x]))
 
 
 def format_sam_record(record_id, sequence, qualities, tags,
@@ -505,6 +511,14 @@ def format_sam_record(record_id, sequence, qualities, tags,
         ])
 
 
+def phred_letter_to_number(x):
+    return ord(x)-33
+
+
+def phred_number_to_letter(x):
+    return chr(x+33)
+
+
 def read_sam_file(fh):
     """
     This is a minimal reader, just for getting the fields I like and emiting
@@ -515,7 +529,8 @@ def read_sam_file(fh):
         yield SeqRecord.SeqRecord(
             Seq.Seq(fields[9]),
             id=fields[0],
-            letter_annotations={'phred_quality':[ord(i)-33 for i in fields[10]]},
+            letter_annotations={'phred_quality':
+                [phred_letter_to_number(i) for i in fields[10]]},
             description=fields[11]
             )
 
