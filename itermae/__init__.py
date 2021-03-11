@@ -172,7 +172,8 @@ def config_from_file(file_path):
         matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
     configuration['matches'] = matches_array
 
-    print("Processing output specifications.",file=sys.stderr)
+    if verbosity >= 1:
+        print("Processing output specifications.",file=sys.stderr)
     output_list = config['output']['list'] # I do need some outputs, or fail
     outputs_array = [] 
     i = 0 # this is for naming untitled outputs sequentially
