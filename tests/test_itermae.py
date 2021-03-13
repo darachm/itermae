@@ -179,35 +179,51 @@ def test_seqholder_match_filter(fastqfile):
         assert set(seqholder.seqs.keys()) == sequences_found 
         # Does it pass a position filter?
         seqholder.build_context()
+        first_filter = 'sample.length == 5 and rest.start >= 15'
+        first_id = "input.id+'_'+sample.seq"
+        first_seq = "strain"
         filter_result = seqholder.evaluate_filter_of_output(
                 {   'name':'test',
-                    'filter':compile('sample.length == 5 and rest.start >= 15','<string>','eval',optimize=2),
-                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
-                    'seq':compile("strain",'<string>','eval',optimize=2)
+                    'filter': [ first_filter,
+                        compile(first_filter,'<string>','eval',optimize=2) ] ,
+                    'id': [ first_id, 
+                        compile(first_id,'<string>','eval',optimize=2) ] ,
+                    'seq': [ first_seq,
+                        compile(first_seq,'<string>','eval',optimize=2) ]
                 }) 
         assert pos_pass == filter_result
         # Does it pass a quality filter, with statistics?
+        second_filter = 'statistics.mean(fixed1.quality) >= 33.5'
         filter_result = seqholder.evaluate_filter_of_output(
                 {   'name':'test',
-                    'filter':compile('statistics.mean(fixed1.quality) >= 33.5','<string>','eval',optimize=2),
-                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
-                    'seq':compile("strain",'<string>','eval',optimize=2)
+                    'filter': [ second_filter, 
+                        compile(second_filter,'<string>','eval',optimize=2) ],
+                    'id': [ first_id, 
+                        compile(first_id,'<string>','eval',optimize=2) ] ,
+                    'seq': [ first_seq,
+                        compile(first_seq,'<string>','eval',optimize=2) ]
                 }) 
         assert qual_pass == filter_result
         # Does it pass a specific sequence filter?
+        third_filter = 'sample.seq == "TTCAC" or sample.seq == "AGGAG"'
         filter_result = seqholder.evaluate_filter_of_output(
                 {   'name':'test',
-                    'filter':compile('sample.seq == "TTCAC" or sample.seq == "AGGAG"','<string>','eval',optimize=2),
-                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
-                    'seq':compile("strain",'<string>','eval',optimize=2)
+                    'filter': [ third_filter,
+                        compile(third_filter,'<string>','eval',optimize=2) ] ,
+                    'id': [ first_id, 
+                        compile(first_id,'<string>','eval',optimize=2) ] ,
+                    'seq': [ first_seq,
+                        compile(first_seq,'<string>','eval',optimize=2) ]
                 }) 
         assert seq_pass == filter_result
         # Then test outputs
         built_output = seqholder.build_output(
                 {   'name':'test',
-                    'filter':compile('True','<string>','eval',optimize=2),
-                    'id':compile("input.id+'_'+sample.seq",'<string>','eval',optimize=2),
-                    'seq':compile("strain",'<string>','eval',optimize=2)
+                    'filter': [ 'True', compile('True','<string>','eval',optimize=2) ] ,
+                    'id': [ first_id, 
+                        compile(first_id,'<string>','eval',optimize=2) ] ,
+                    'seq': [ first_seq,
+                        compile(first_seq,'<string>','eval',optimize=2) ]
                 }) 
         # Are the right outputs constructed?
         if built_output is None:

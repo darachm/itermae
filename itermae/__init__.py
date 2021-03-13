@@ -293,9 +293,13 @@ def config_from_args(args_copy):
         raise
 
     try:
+        i = 0
         outputs_array = [] 
         for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
+            this_name = 'output_'+str(i)
+            i += 1
             outputs_array.append( {   
+                    'name': this_name,
                     'filter': [ filterz,
                         compile(filterz,'<string>','eval',optimize=2) ],
                     'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
