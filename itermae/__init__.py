@@ -449,7 +449,7 @@ class SeqHolder:
         try:
             return eval(output_dict['filter'][1],globals(),self.context_filter)
         except:
-            if self.verbosity >= 2:
+            if self.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to evaluate the filter "+
                     str(output_dict['filter'][0]),file=sys.stderr)
@@ -466,7 +466,7 @@ class SeqHolder:
             out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_seq))
             return out_seq
         except:
-            if self.verbosity >= 2:
+            if self.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to build the output "+
                     "id: "+str(output_dict['id'][0])+
