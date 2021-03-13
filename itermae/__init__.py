@@ -198,7 +198,7 @@ def config_from_file(file_path):
                 each['seq']+"'.",file=sys.stderr)
         outputs_array.append( {
                 'name':each['name'],
-                'filter':compile('True','<string>','eval',optimize=2),
+                'filter':compile(each['filter'],'<string>','eval',optimize=2),
                 'id':compile(each['id'],'<string>','eval',optimize=2),
                 'seq':compile(each['seq'],'<string>','eval',optimize=2)
             })
