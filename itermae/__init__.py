@@ -198,9 +198,12 @@ def config_from_file(file_path):
                 each['seq']+"'.",file=sys.stderr)
         outputs_array.append( {
                 'name':each['name'],
-                'filter':compile(each['filter'],'<string>','eval',optimize=2),
-                'id':compile(each['id'],'<string>','eval',optimize=2),
-                'seq':compile(each['seq'],'<string>','eval',optimize=2)
+                'filter':[ each['filter'],
+                    compile(each['filter'],'<string>','eval',optimize=2) ],
+                'id':[ each['id'], 
+                    compile(each['id'],'<string>','eval',optimize=2) ],
+                'seq':[ each['seq'],
+                    compile(each['seq'],'<string>','eval',optimize=2) ]
             })
     configuration['output_groups'] = outputs_array
 
@@ -293,9 +296,11 @@ def config_from_args(args_copy):
         outputs_array = [] 
         for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
             outputs_array.append( {   
-                    'id': compile(idz,'<string>','eval',optimize=2), 
-                    'seq': compile(seqz,'<string>','eval',optimize=2), 
-                    'filter': compile(filterz,'<string>','eval',optimize=2) })
+                    'filter': [ filterz,
+                        compile(filterz,'<string>','eval',optimize=2) ],
+                    'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
+                    'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] 
+                })
     except:
         print("I failed to build outputs array from the arguments supplied.",
             file=sys.stderr)
@@ -438,12 +443,12 @@ class SeqHolder:
         """
 
         try:
-            return eval(output_dict['filter'],globals(),self.context_filter)
+            return eval(output_dict['filter'][1],globals(),self.context_filter)
         except:
             if self.verbosity >= 2:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to evaluate the filter "+
-                    str(output_dict['filter']),file=sys.stderr)
+                    str(output_dict['filter'][0]),file=sys.stderr)
             return False
 
     def build_output(self,output_dict):
@@ -453,15 +458,15 @@ class SeqHolder:
 
         try:
             out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
-            out_seq = eval(output_dict['seq'],globals(),self.context_seq)
-            out_seq.id = str(eval(output_dict['id'],globals(),self.context_seq))
+            out_seq = eval(output_dict['seq'][1],globals(),self.context_seq)
+            out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_seq))
             return out_seq
         except:
             if self.verbosity >= 2:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to build the output "+
-                    "id: "+str(output_dict['id'])+
-                    "seq: "+str(output_dict['seq']) ,file=sys.stderr)
+                    "id: "+str(output_dict['id'][0])+
+                    "seq: "+str(output_dict['seq'][0]) ,file=sys.stderr)
             return None
 
     def format_report(self,label,output_seq,evaluated_filters):
