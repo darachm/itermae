@@ -469,7 +469,7 @@ class SeqHolder:
                     "seq: "+str(output_dict['seq'][0]) ,file=sys.stderr)
             return None
 
-    def format_report(self,label,output_seq,evaluated_filters):
+    def format_report(self,label,output_seq):
         """
         This is for formatting a standard report line for the reporting function
         """
@@ -479,14 +479,19 @@ class SeqHolder:
                 id='ERROR',
                 letter_annotations={'phred_quality':[0]})
 
+        try:
+            output_string = ( str(output_seq.id)+"\",\""+
+                str(output_seq.seq)+"\",\""+
+                phred_number_array_to_joined_string(
+                    output_seq.letter_annotations['phred_quality']) )
+        except:
+            output_string = "*,*,*"
+
         return ( "\""+label+"\",\""+
             str(self.seqs['input'].id)+"\",\""+
             str(self.seqs['input'].seq)+"\",\""+
             phred_number_array_to_joined_string(self.seqs['input'].letter_annotations['phred_quality'])+"\",\""+
-            str(output_seq.id)+"\",\""+
-            str(output_seq.seq)+"\",\""+
-            phred_number_array_to_joined_string(output_seq.letter_annotations['phred_quality'])+"\",\""+
-            str(evaluated_filters)+"\",\""+
+            output_string+"\",\""+
             "-".join([ i+"_"+self.group_stats[i].flatten() 
                         for i in self.group_stats ] )+
             "\"" ) # See group_stats method for what these are (start stop len)
@@ -692,30 +697,35 @@ def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
     # Then we eval the filters and build outputs, for each output
     output_records = []
     for each_output in outputs_array:
-        output_records.append( ( 
-                seq_holder.evaluate_filter_of_output(each_output), 
-                seq_holder.build_output(each_output) 
-            ) )
+        output_records.append( { 
+                'name': each_output['name'],
+                'filter_result': seq_holder.evaluate_filter_of_output(each_output), 
+                'output': seq_holder.build_output(each_output) 
+            } )
 
     # This is just if we pass all the filters provided
-    passed_filters = not any([ i == False for i,j in output_records ])
+    passed_filters = not any( 
+            [ i['filter_result'] == False for i in output_records ] )
 
     # Then we can make the report CSV if asked for (mainly for debugging/tuning)
     if report_fh != None:
-        if passed_filters:
-            for which, output_record in enumerate(output_records):
-                print( seq_holder.format_report( "PassedFilters", 
-                        output_record[1], output_record[0]) ,file=report_fh)
-        else:
-            for which, output_record in enumerate(output_records):
-                print( seq_holder.format_report( "FailedAtLeastOneFilter", 
-                        output_record[1], output_record[0]) ,file=report_fh)
+        for output_record in output_records:
+            if output_record['filter_result']:
+                print( seq_holder.format_report( 
+                        "PassedFilterFor_"+output_record['name'], 
+                        output_record['output'] ) ,file=report_fh)
+            else:
+                print( seq_holder.format_report( 
+                        "FailedFilterFor_"+output_record['name'], 
+                        output_record['output'] ) ,file=report_fh)
 
     # Finally, write all the outputs, to main stream if passed, otherwise to
     # the failed output (if provided)
-    for which, output_record in enumerate(output_records):
-        if output_record[0] and output_record[1] is not None:
-            write_out_seq(output_record[1], output_fh, out_format, which)
+    for output_record in output_records:
+        if output_record['filter_result'] and output_record['output'] is not None:
+            write_out_seq(output_record['output'], output_fh, out_format, 
+                output_record['name'])
         elif failed_fh != None:
-            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, which)
+            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, 
+                output_record['name'])
 
