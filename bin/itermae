@@ -186,10 +186,10 @@ if __name__ == '__main__':
         print('    input from '+configuration['input'],file=sys.stderr)
         print('    of format '+configuration['input_format'],file=sys.stderr)
         print('    is gzipped? '+str(configuration['input_gzipped']),file=sys.stderr)
-        print('    outputing to '+configuration['output'],file=sys.stderr)
+        print('    output APPENDING to '+configuration['output'],file=sys.stderr)
         print('    in format '+configuration['output_format'],file=sys.stderr)
-        print('    failed going to '+str(configuration['failed']),file=sys.stderr)
-        print('    report going to '+str(configuration['report']),file=sys.stderr)
+        print('    failed being APPENDED to '+str(configuration['failed']),file=sys.stderr)
+        print('    report being APPENDED to '+str(configuration['report']),file=sys.stderr)
         print('    with verbosity at '+str(configuration['verbosity']),file=sys.stderr)
         print('    doing these matches:',file=sys.stderr)
         for each in configuration['matches']:
