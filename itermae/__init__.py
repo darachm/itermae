@@ -18,18 +18,6 @@ from Bio import Seq, SeqRecord
 
 ##### Input configuration handling utilities
 
-def check_reserved_name(name,reserved_names=['dummyspacer','input']):
-    """
-    This is just to check that the name is not one of these, if so, error out.
-    """
-    if name in reserved_names:
-        print("Hey, you can't name a capture group "+
-            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
-            ", I'm using that/those! Pick a different name.",
-            file=sys.stderr)
-        raise
-
-
 # IUPAC dictionary for translating codes to regex.
 # Note the inclusion of * and + for repeats.
 # from http://www.bioinformatics.org/sms/iupac.html
@@ -321,6 +309,18 @@ def config_from_args(args_copy):
     configuration['report'] = args_copy.report
  
     return configuration
+
+
+def check_reserved_name(name,reserved_names=['dummyspacer','input']):
+    """
+    This is just to check that the name is not one of these, if so, error out.
+    """
+    if name in reserved_names:
+        print("Hey, you can't name a capture group "+
+            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
+            ", I'm using that/those! Pick a different name.",
+            file=sys.stderr)
+        raise
 
 
 class MatchScores:
