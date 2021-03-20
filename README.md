@@ -1,9 +1,11 @@
-# itermae 0.4.2
+# itermae
 
-Command-line utility to apply a series of fuzzy regular expression operations
-to sequences from a variety of formats, then reconstruct a variety of output
-formats from the captured groups -- after applying custom filters on 
-matched group position, length, sequence, and/or quality statistics.
+Command-line utility to recognize patterns in input sequences and generate 
+outputs from groups recognized. Basically, a utility for applying fuzzy regular
+expression operations to (primarily) DNA sequence for purposes of DNA 
+barcode/tag/UMI parsing, sequence and quality -based filtering, 
+and general output re-arrangment.
+
 Reads and makes FASTQ, FASTA, text-file, and SAM (tab-delimited).
 Designed to function with sequence piped in from tools like GNU `parallel`
 to permit light-weight parallelization.
@@ -11,6 +13,8 @@ Matching is handled as strings in
 [`regex`](https://pypi.org/project/regex/),
 and [`Biopython`](https://pypi.org/project/biopython/) is used to represent,
 slice, and read/output formats.
+
+Designed for use in command-line shells on a \*nix machine.
 
 # Availability, installation, 'installation'
 
@@ -34,11 +38,16 @@ Options:
 # Usage
 
 `itermae` is envisioned to be used in a pipe-line where you just got your
-FASTQ reads back, and you want to parse them. You can use `zcat` to feed
-small chunks into the tool, develop operations that match, filter, and extract
-the right groups to assemble the output you want. Then you wrap it it up behind
-`parallel` and feed the whole FASTQ file via `zcat` in on standard in.
-This parallelizes with a small memory footprint (tune the chunk size), then
+DNA sequencing FASTQ reads back, and you want to parse them. 
+
+You feed small chunks of the file into the tool with match-level
+verbosity and record-level reports to develop good patterns. 
+These patterns, filtering, and outputs are used to pull out and 
+assemble the output you want.
+
+Then you wrap it it up behind
+`parallel` and feed the whole FASTQ file via `zcat` in on standard input.
+This parallelizes with a small memory footprint (will measure later), then
 you write it out to disk (or stream into another tool).
 
 **Tutorial** / **demo**  - there's a jupyter notebook in this root directory
@@ -48,4 +57,3 @@ There's also some longer runs that are launched by a bash script in
 `profiling_tests`, these generate longer runs for profiling purposes
 with `cProfile` and `snakeviz`.
 
-Designed for use in command-line shells on a \*nix machine.
