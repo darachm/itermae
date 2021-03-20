@@ -5,7 +5,7 @@ with open('README.md','r') as fh:
 
 setuptools.setup(
     name='itermae',
-    version='0.5.0',
+    version='0.5.0.post1',
     author='Darach Miller',
     description='Commandline tool for parsing NGS reads by multiple fuzzy '+
         'regex operations',
@@ -16,6 +16,7 @@ setuptools.setup(
     license='BSD 2-clause',
     packages=setuptools.find_packages(),
     install_requires=[
+        'pyyaml',
         'regex',
         'biopython',
         ],
