@@ -51,7 +51,11 @@ itermae_test_base.simg : Singularity.test_base
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<
 
-itermae_test.simg : Singularity.test itermae_test_base.simg
+itermae_test.simg : Singularity.test itermae_test_base.simg dist-files
+	sudo rm -r $@ || echo "already gone"
+	sudo singularity build $@ $<
+
+itermae_test_sandbox.simg : Singularity.test itermae_test_base.simg dist-files
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build --sandbox $@ $<
 
