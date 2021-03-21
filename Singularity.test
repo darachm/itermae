@@ -1,0 +1,21 @@
+Bootstrap: localimage
+From: itermae_test_base.simg
+
+%labels
+MAINTAINER darachm
+
+%files
+
+    dist/itermae*whl ./
+#dist/itermae-0.5.0.post1.whl 
+
+%help
+
+    testing
+
+%post
+    python3 -m pip install itermae*.whl
+
+%test
+
+

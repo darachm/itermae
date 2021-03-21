@@ -43,11 +43,15 @@ upload-testpypi: dist-files ## Upload distribution files for TEST pypi
 profiler-runs: ## Run profiler experiments to look for performance tweaks with snakeviz
 	bash profiling_tests/profiler_runs.sh
 
-itermae.singularity: Singularity* ## Build Singularity container from recipe
+itermae_%.simg : Singularity.% ## Build Singularity container from recipe
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<
 
-itermae-test.singularity: Singularity ## Build TEST sandbox Singularity container from recipe
+itermae_test_base.simg : Singularity.test_base
+	sudo rm -r $@ || echo "already gone"
+	sudo singularity build $@ $<
+
+itermae_test.simg : Singularity.test itermae_test_base.simg
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build --sandbox $@ $<
 
