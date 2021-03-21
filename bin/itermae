@@ -184,10 +184,10 @@ if __name__ == '__main__':
     if configuration['verbosity'] >= 1:
         print('Configured as:',file=sys.stderr)
         print('    input from: '+configuration['input'],file=sys.stderr)
-        print('    of format: '+configuration['input_format'],file=sys.stderr)
+        print('    input format: '+configuration['input_format'],file=sys.stderr)
         print('    is it gzipped?: '+str(configuration['input_gzipped']),file=sys.stderr)
         print('    output APPENDING to: '+configuration['output'],file=sys.stderr)
-        print('    in format is: '+configuration['output_format'],file=sys.stderr)
+        print('    output format is: '+configuration['output_format'],file=sys.stderr)
         print('    failed being APPENDED to file: '+str(configuration['failed']),file=sys.stderr)
         print('    report being APPENDED to file: '+str(configuration['report']),file=sys.stderr)
         print('    with verbosity set at: '+str(configuration['verbosity']),file=sys.stderr)

@@ -181,7 +181,7 @@ def config_from_file(file_path):
             each['filter'] = 'True' # so will pass if not provided
         if verbosity >= 1:
             print("    Parsing output specification of '"+each['name']+"', "+
-                "ID is '"+each['id']+"', filter outputs it if '"+
+                "ID is '"+each['id']+"', filter outputs to accept only if '"+
                 each['filter']+"', with sequence derived of '"+
                 each['seq']+"'.",file=sys.stderr)
         outputs_array.append( {
