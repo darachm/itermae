@@ -589,7 +589,7 @@ def read_txt_file(fh):
     """
     for i in fh.readlines():
         seq = i.rstrip()
-        yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq )
+        yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
 
 
 def open_appropriate_input_format(in_fh, format_name):
