@@ -441,6 +441,13 @@ class SeqHolder:
         # the bases of the groups
         self.context_seq = { **self.seqs }
 
+        # Then one for the IDs, so we're setting the input ID as 'id', and then
+        # each group name just refers to the sequence. I assume folks are not
+        # wanting to be putting seq qualities in the ID, but I may be obscuring
+        # the description tags that some folks add in there
+        self.context_id = { 'id': self.seqs['input'].id , 
+            **{ i: str(self.seqs[i].seq) for i in self.seqs } }
+
     def evaluate_filter_of_output(self,output_dict):
         """
         This tests a defined filter on the 'seq_holder' object
@@ -463,14 +470,14 @@ class SeqHolder:
         try:
             out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
             out_seq = eval(output_dict['seq'][1],globals(),self.context_seq)
-            out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_seq))
+            out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_id))
             return out_seq
         except:
             if self.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
-                    self.seqs['input'].id+" failed to build the output "+
-                    "id: "+str(output_dict['id'][0])+
-                    "seq: "+str(output_dict['seq'][0]) ,file=sys.stderr)
+                    self.seqs['input'].id+" failed to build the output"+
+                    " id: "+str(output_dict['id'][0])+
+                    " seq: "+str(output_dict['seq'][0]) ,file=sys.stderr)
             return None
 
     def format_report(self,label,output_seq):

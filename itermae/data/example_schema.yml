@@ -50,13 +50,13 @@ output:
     list: # List of different sequence records to generate in the SAME FILE
         -   name: barcode # optional, for debugging
             filter: 'barcode.length >= 3' # Filter to apply before outputing
-            id: input.id # Default, specifying ID
+            id: input # Default, specifying ID
             seq: barcode # What sequences to output, can be combined
         -   name: sampleIndex 
             filter: 'sampleIndex.length >= 3'
             seq: sampleIndex
         -   name: demo 
-            id:  'input.id+"_"+sampleIndex.seq'
+            id:  'id+"_"+sampleIndex'
             seq: 'sampleIndex+dummyspacer+first_five_barcode+dummyspacer+barcode'
     failed: failed # optional, path to write failed reads to
     report: report.csv # optional, CSV report for pass fail, only use with

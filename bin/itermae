@@ -7,7 +7,7 @@ import regex
 import time
 import yaml
 
-sys.path.append('../itermae')
+#sys.path.append('../itermae') # For testing while developing... 
 import itermae
 
 if __name__ == '__main__':
