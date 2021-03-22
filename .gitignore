@@ -2,11 +2,6 @@
 *.pyc
 *.ipynb_checkpoints
 *.profile
-
 /dist/
 /build/
 /docs/build
-
-/demo/report.csv
-/demo/failed.fastq
-/demo/out.sam
