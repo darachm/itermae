@@ -7,7 +7,7 @@ import regex
 import time
 import yaml
 
-#sys.path.append('../itermae') # For testing while developing... 
+sys.path.append('../itermae') # For testing while developing... 
 import itermae
 
 if __name__ == '__main__':
@@ -103,14 +103,25 @@ if __name__ == '__main__':
     """)
     parser_groups.add_argument("-oi","--output-id",action="append",
         help="""\
-    The ID field of an output. These should evaluate
-    to a string in Python. You can build this by 
-    concatenating together parts of the matched 
-    groups, such as:
+    The ID field of an output. These should evaluate to a string 
+    in Python. You can build this by concatenating together parts 
+    of the matched groups, such as:
 
-    'input.id+\"_\"+umi.seq' 
+    'id+\"_\"+umi' 
 
-    to append the index sequence to the input's ID.""")
+    to append the index sequence to the input's ID.
+    Available is each group (their name), which is the sequence 
+    matched. 'id' is input ID field, 'description' is input
+    description field.
+    """)
+    parser_groups.add_argument("-od","--output-description",action="append",
+        help="""\
+    The description field of an output. These should evaluate
+    to a string in Python. You can build this by concatenating 
+    together parts of the matched groups, such as:
+
+    '"described as umi is "+umi' 
+    """)
     parser_groups.add_argument("-os","--output-seq",action="append",
         help="""\
     The sequence of an output. This is evaluated to
@@ -198,6 +209,7 @@ if __name__ == '__main__':
         print('    writing these outputs:',file=sys.stderr)
         for each in configuration['output_groups']:
             print('        id: '+str(each['id'][0]),file=sys.stderr)
+            print('        description: '+str(each['description'][0]),file=sys.stderr)
             print('        seq: '+str(each['seq'][0]),file=sys.stderr)
             print('        filter: '+str(each['filter'][0]),file=sys.stderr)
 

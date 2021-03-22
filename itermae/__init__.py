@@ -169,7 +169,11 @@ def config_from_file(file_path):
         try:
             each['id']
         except:
-            each['id'] = 'input.id' # default, the input.id
+            each['id'] = 'id' # default, the id
+        try:
+            each['description']
+        except:
+            each['description'] = '""' # default blank
         try:
             each['name']
         except:
@@ -183,7 +187,8 @@ def config_from_file(file_path):
             print("    Parsing output specification of '"+each['name']+"', "+
                 "ID is '"+each['id']+"', filter outputs to accept only if '"+
                 each['filter']+"', with sequence derived of '"+
-                each['seq']+"'.",file=sys.stderr)
+                each['seq']+"', description of '"+each['description']+
+                "'.",file=sys.stderr)
         outputs_array.append( {
                 'name':each['name'],
                 'filter':[ each['filter'],
@@ -191,7 +196,9 @@ def config_from_file(file_path):
                 'id':[ each['id'], 
                     compile(each['id'],'<string>','eval',optimize=2) ],
                 'seq':[ each['seq'],
-                    compile(each['seq'],'<string>','eval',optimize=2) ]
+                    compile(each['seq'],'<string>','eval',optimize=2) ],
+                'description':[ each['description'],
+                    compile(each['description'],'<string>','eval',optimize=2) ]
             })
     configuration['output_groups'] = outputs_array
 
@@ -261,29 +268,35 @@ def config_from_args(args_copy):
 
     # Adding in defaults for outputs, may be redundant with argparse settings...
     if args_copy.output_id is None:
-        args_copy.output_id = ['input.id']
+        args_copy.output_id = ['id']
     if args_copy.output_filter is None:
         args_copy.output_filter = ['True']
+    if args_copy.output_description is None:
+        args_copy.output_description = ['']
 
     # Normalizing all singletons to same length
     maximum_number_of_outputs = max( [len(args_copy.output_id), 
-        len(args_copy.output_seq), len(args_copy.output_filter)] )
+        len(args_copy.output_seq), len(args_copy.output_filter)],
+        len(args_copy.output_description) )
     if len(args_copy.output_id) == 1:
         args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
     if len(args_copy.output_seq) == 1:
         args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
     if len(args_copy.output_filter) == 1:
         args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
-    if not len(args_copy.output_id) == len(args_copy.output_seq) == len(args_copy.output_filter):
-        print("The output IDs, seqs, and filters are of unequal sizes. "+
-            "Make them equal, or only define one (and it will be reused "+
-            "across all).",file=sys.stderr)
+    if len(args_copy.output_description) == 1:
+        args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
+    if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
+            len(args_copy.output_filter) == len(args_copy.output_description) ):
+        print("The output IDs, seqs, descriptions, and filters are of unequal "+
+            "sizes. Make them equal, or only define one each and it will be "+
+            "reused across all.",file=sys.stderr)
         raise
 
     try:
         i = 0
         outputs_array = [] 
-        for idz, seqz, filterz in zip(args_copy.output_id,args_copy.output_seq,args_copy.output_filter):
+        for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
             this_name = 'output_'+str(i)
             i += 1
             outputs_array.append( {   
@@ -291,7 +304,8 @@ def config_from_args(args_copy):
                     'filter': [ filterz,
                         compile(filterz,'<string>','eval',optimize=2) ],
                     'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
-                    'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] 
+                    'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
+                    'description':[ description, compile(description,'<string>','eval',optimize=2) ]
                 })
     except:
         print("I failed to build outputs array from the arguments supplied.",
@@ -311,9 +325,17 @@ def config_from_args(args_copy):
     return configuration
 
 
-def check_reserved_name(name,reserved_names=['dummyspacer','input']):
+def check_reserved_name(name,
+        reserved_names=['dummyspacer','input','id','description'] ):
     """
     This is just to check that the name is not one of these, if so, error out.
+
+    - 'dummyspacer' is so you can pop an X into your sequence as a separator
+        delimiter for later processing
+    - 'input' is the input group, the original one
+    - 'id' is the input ID, here just as 'id' so it's easy to find
+    - 'description' is for mapping over the FASTQ description
+
     """
     if name in reserved_names:
         print("Hey, you can't name a capture group "+
@@ -443,9 +465,11 @@ class SeqHolder:
 
         # Then one for the IDs, so we're setting the input ID as 'id', and then
         # each group name just refers to the sequence. I assume folks are not
-        # wanting to be putting seq qualities in the ID, but I may be obscuring
-        # the description tags that some folks add in there
-        self.context_id = { 'id': self.seqs['input'].id , 
+        # wanting to be putting seq qualities in the ID. We do make 
+        # 'description' available if that's important
+        self.context_id = { 
+            'id': self.seqs['input'].id , 
+            'description': self.seqs['input'].description , 
             **{ i: str(self.seqs[i].seq) for i in self.seqs } }
 
     def evaluate_filter_of_output(self,output_dict):
@@ -471,6 +495,7 @@ class SeqHolder:
             out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
             out_seq = eval(output_dict['seq'][1],globals(),self.context_seq)
             out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_id))
+            out_seq.description = str(eval(output_dict['description'][1],globals(),self.context_id))
             return out_seq
         except:
             if self.verbosity >= 3:
