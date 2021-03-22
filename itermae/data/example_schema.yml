@@ -46,16 +46,17 @@ output:
     verbosity: 1 # How verbose to be, this is output to standard error.
                  # You can also define "outside" of 'output', you do you.
     to: STDOUT # Default, also can be a filepath
-    format: fastq # Default, also can be FASTQ, fasta, txt, or SAM
+    format: sam # Default, also can be FASTQ, fasta, txt, or SAM
     list: # List of different sequence records to generate in the SAME FILE
         -   name: barcode # optional, for debugging
             filter: 'barcode.length >= 3' # Filter to apply before outputing
             id: input # Default, specifying ID
-            description: 'uh' # Default, specifying ID
+            description: '"barcode of "+barcode'
             seq: barcode # What sequences to output, can be combined
         -   name: sampleIndex 
             filter: 'sampleIndex.length >= 3'
             seq: sampleIndex
+            description: 'description+" is the input description"'
         -   name: demo 
             id:  'id+"_"+sampleIndex'
             seq: 'sampleIndex+dummyspacer+first_five_barcode+dummyspacer+barcode'

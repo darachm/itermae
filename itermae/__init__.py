@@ -173,7 +173,7 @@ def config_from_file(file_path):
         try:
             each['description']
         except:
-            each['description'] = '""' # default blank
+            each['description'] = 'description' # default pass through from in
         try:
             each['name']
         except:
@@ -185,10 +185,11 @@ def config_from_file(file_path):
             each['filter'] = 'True' # so will pass if not provided
         if verbosity >= 1:
             print("    Parsing output specification of '"+each['name']+"', "+
-                "ID is '"+each['id']+"', filter outputs to accept only if '"+
-                each['filter']+"', with sequence derived of '"+
-                each['seq']+"', description of '"+each['description']+
-                "'.",file=sys.stderr)
+                "ID is '"+each['id']+"' (input ID is 'id'), filter outputs "+
+                "to accept only if '"+each['filter']+"' is True, with "+
+                "sequence derived from '"+each['seq']+"', and a description "+
+                "of '"+each['description']+"' ('description' is input "+
+                "description').",file=sys.stderr)
         outputs_array.append( {
                 'name':each['name'],
                 'filter':[ each['filter'],
@@ -272,12 +273,12 @@ def config_from_args(args_copy):
     if args_copy.output_filter is None:
         args_copy.output_filter = ['True']
     if args_copy.output_description is None:
-        args_copy.output_description = ['']
+        args_copy.output_description = ['description']
 
     # Normalizing all singletons to same length
     maximum_number_of_outputs = max( [len(args_copy.output_id), 
-        len(args_copy.output_seq), len(args_copy.output_filter)],
-        len(args_copy.output_description) )
+        len(args_copy.output_seq), len(args_copy.output_filter),
+        len(args_copy.output_description)] )
     if len(args_copy.output_id) == 1:
         args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
     if len(args_copy.output_seq) == 1:
@@ -431,7 +432,7 @@ class SeqHolder:
                 self.seqs[match_name] = \
                     self.seqs[input_group][slice(*fuzzy_match.span(match_name))]
 
-                self.seqs[match_name].description = "" 
+                #self.seqs[match_name].description = "" 
                 # This is to fix a bug where the ID is stuck into the 
                 # description and gets unpacked on forming outputs
 
@@ -660,7 +661,18 @@ def reader(configuration):
 
     # Do the chop-ing...
     for each_seq in input_seqs:
-            # Each sequence, one by one...
+
+        # CAUTION
+        # The below is a munge. 
+        # According to https://github.com/biopython/biopython/issues/398 ,
+        # BioPython mimics an old tool's weird behavior by outputting the 
+        # ID in the description field. The fix for it relies on a comparing
+        # a white-space 'split' to remove the ID if it's in the description.
+        # So that doesn't work if you modify the ID or so, so I remove right
+        # after parsing.
+        each_seq.description = re.sub(str(each_seq.id),"",
+            each_seq.description).lstrip()
+
         chop(
             seq_holder=SeqHolder(each_seq,verbosity=configuration['verbosity']),  
             operations_array=configuration['matches'],
@@ -680,11 +692,26 @@ def reader(configuration):
     return(0)
 
 
+def fix_desc(seq_record):
+    """
+    According to https://github.com/biopython/biopython/issues/398 ,
+    BioPython mimics an old weird behavior by outputting the ID in the
+    description field. There's a fix for the FASTA writer, but not the
+    FASTQ ... so here we munge that by removing the ID from the description.
+
+    ... except that I don't know where to put this.
+    """
+    seq_record.description = re.sub(str(seq_record.id),"",seq_record.description)
+    return seq_record
+
+
 def write_out_seq(seq,fh,format,which):
     if format == "sam":
         print( format_sam_record( seq.id, str(seq.seq),
                 phred_number_array_to_joined_string(seq.letter_annotations['phred_quality']),
                 "IE:Z:"+str(which) ),file=fh)
+        # We ignore printing the description anywhere - if you need it, concat
+        # it onto the ID
     elif format == "txt":
         print( str(seq.seq), file=fh)
     else:
