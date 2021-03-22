@@ -27,7 +27,8 @@ def test_configuration_args():
     args_test.gzipped = False
     args_test.match = ["input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}"]
     args_test.output_seq = ["barcode"]
-    args_test.output_id = ["input.id"]
+    args_test.output_id = ["id"]
+    args_test.output_description = None
     args_test.output_filter = None
     args_test.verbose = 1
     args_test.output = "test.fastq"
@@ -180,8 +181,9 @@ def test_seqholder_match_filter(fastqfile):
         # Does it pass a position filter?
         seqholder.build_context()
         first_filter = 'sample.length == 5 and rest.start >= 15'
-        first_id = "input.id+'_'+sample.seq"
+        first_id = "id+'_'+sample"
         first_seq = "strain"
+        first_desc = "description"
         filter_result = seqholder.evaluate_filter_of_output(
                 {   'name':'test',
                     'filter': [ first_filter,
@@ -189,7 +191,9 @@ def test_seqholder_match_filter(fastqfile):
                     'id': [ first_id, 
                         compile(first_id,'<string>','eval',optimize=2) ] ,
                     'seq': [ first_seq,
-                        compile(first_seq,'<string>','eval',optimize=2) ]
+                        compile(first_seq,'<string>','eval',optimize=2) ],
+                    'description': [ first_desc,
+                        compile(first_desc,'<string>','eval',optimize=2) ]
                 }) 
         assert pos_pass == filter_result
         # Does it pass a quality filter, with statistics?
@@ -201,7 +205,9 @@ def test_seqholder_match_filter(fastqfile):
                     'id': [ first_id, 
                         compile(first_id,'<string>','eval',optimize=2) ] ,
                     'seq': [ first_seq,
-                        compile(first_seq,'<string>','eval',optimize=2) ]
+                        compile(first_seq,'<string>','eval',optimize=2) ],
+                    'description': [ first_desc,
+                        compile(first_desc,'<string>','eval',optimize=2) ]
                 }) 
         assert qual_pass == filter_result
         # Does it pass a specific sequence filter?
@@ -213,7 +219,9 @@ def test_seqholder_match_filter(fastqfile):
                     'id': [ first_id, 
                         compile(first_id,'<string>','eval',optimize=2) ] ,
                     'seq': [ first_seq,
-                        compile(first_seq,'<string>','eval',optimize=2) ]
+                        compile(first_seq,'<string>','eval',optimize=2) ],
+                    'description': [ first_desc,
+                        compile(first_desc,'<string>','eval',optimize=2) ]
                 }) 
         assert seq_pass == filter_result
         # Then test outputs
@@ -223,7 +231,9 @@ def test_seqholder_match_filter(fastqfile):
                     'id': [ first_id, 
                         compile(first_id,'<string>','eval',optimize=2) ] ,
                     'seq': [ first_seq,
-                        compile(first_seq,'<string>','eval',optimize=2) ]
+                        compile(first_seq,'<string>','eval',optimize=2) ],
+                    'description': [ first_desc,
+                        compile(first_desc,'<string>','eval',optimize=2) ]
                 }) 
         # Are the right outputs constructed?
         if built_output is None:
@@ -249,13 +259,13 @@ def test_full_combinations_yml():
 # Operations for argument-specified options
 one_operation_string = (
     '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-    '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '
+    '-os "barcode" -oi "id+\\"_\\"+sampleIndex" '
     )
 two_operation_string = (
     '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
     '-m "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-    '-os "barcode" -oi "input.id+\\"_\\"+sampleIndex.seq" '+
-    '-os "upPrime+barcode+downPrime" -oi "input.id+\\"_withFixedFlanking_\\"+sampleIndex.seq" '
+    '-os "barcode" -oi "id+\\"_\\"+sampleIndex" '+
+    '-os "upPrime+barcode+downPrime" -oi "id+\\"_withFixedFlanking_\\"+sampleIndex" '
     )
 
 # Each operation applied to shortread FASTQ, non-gzipped
@@ -274,12 +284,7 @@ def test_full_combinations():
             '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
         filename = 'itermae/data/test_outputs/barseq_combinations_'
-        if input_format in ['fastq','sam']:
-            filename += 'with_qualities_'
-        else:
-            filename += 'no_qualities_'
-        if input_format in ['txt']:
-            filename += 'with_seq_as_id_'
+        filename += 'input_'+input_format+'_'
         filename += str(which_ops+1)+'_ops'
         filename += '.'+output_format
 #        with open(filename,'w') as f:
@@ -288,6 +293,7 @@ def test_full_combinations():
             expected_file = f.readlines()
         for i,j in zip(results.stdout.split('\n'),expected_file):
             assert str(i) == str(j.rstrip('\n'))
+
 
 # Each operation applied to shortread FASTQ, gzipped
 def test_full_combinations_gzipped():
@@ -305,12 +311,7 @@ def test_full_combinations_gzipped():
             '--verbose --output-format '+output_format ,
             shell=True,capture_output=True,encoding='utf-8')
         filename = 'itermae/data/test_outputs/barseq_combinations_'
-        if input_format in ['fastq','sam']:
-            filename += 'with_qualities_'
-        else:
-            filename += 'no_qualities_'
-        if input_format in ['txt']:
-            filename += 'with_seq_as_id_'
+        filename += 'input_'+input_format+'_'
         filename += str(which_ops+1)+'_ops'
         filename += '.'+output_format
 #        with open(filename,'w') as f:
@@ -319,5 +320,4 @@ def test_full_combinations_gzipped():
             expected_file = f.readlines()
         for i,j in zip(results.stdout.split('\n'),expected_file):
             assert str(i) == str(j.rstrip('\n'))
-
 
