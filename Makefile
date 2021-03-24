@@ -1,11 +1,15 @@
 # For help, do `make help` ( idea from SoftwareCarpentry and victoria.dev )
 
 .PHONY: help container run-demos clean dist-pkg dist-files upload-pypi \
-	upload-testpypi profiler-runs
+	docs \
+	upload-testpypi profiler-runs 
 
 help: ## Display help
 	@echo 'Commands/rules to run:'
 	@grep '\s##\s' Makefile | mawk -F':.*?## ' '{printf "    %-28s%s\n", $$1, $$2}'
+
+docs: source ## Build sphinx documentation
+	sphinx-build -b html source docs
 
 demo: demo/demos_and_tutorial_itermae.html ## Typeset the demo jupyter notebook
 
