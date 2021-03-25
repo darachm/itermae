@@ -1,0 +1,9 @@
+
+.jupyter_container div.output pre {
+    line-height: 0.7em;
+    font-size: 0.7em;
+}
+
+.jupyter_container .output {
+    margin: 0em;
+}
