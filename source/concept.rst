@@ -1,5 +1,5 @@
-Concept
-=======
+Concept and overview
+========================
 
 This tool is designed to robustly parse DNA amplicon-sequencing from designs 
 that use complex DNA barcoding architectures. 
