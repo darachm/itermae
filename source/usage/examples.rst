@@ -1,9 +1,10 @@
+.. _examples:
+
 Examples
 ========
 
-
-For this page the examples are run using using `jupyter-execute`_.
-To do this,
+The examples are run using using `jupyter-execute`_, so should be reproducible
+for you if you install ``itermae`` and run them from inside the package repo.
 
 .. _jupyter-execute: a link
 

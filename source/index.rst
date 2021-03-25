@@ -1,10 +1,11 @@
-.. itermae documentation master file, created by
-   sphinx-quickstart on Wed Mar 24 14:12:53 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+itermae docs
+===============================================================
 
-Welcome to itermae's documentation!
-===================================
+``itermae`` is a command-line utility for recognizing and parsing patterns 
+from sequences. It's designed for handling Illumina short-read FASTQ files, 
+but can work on FASTQ/SAM files from PacBio or FASTA or one-sequence-per-line
+text files.
+
 
 .. toctree::
     :maxdepth: 2
@@ -12,7 +13,7 @@ Welcome to itermae's documentation!
 
     concept
     install
-    usage/quickstart
+    usage/recommendation
     usage/config
     usage/examples
     package
@@ -20,9 +21,8 @@ Welcome to itermae's documentation!
 
 
 
-Indices and tables
+Indices
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
