@@ -172,6 +172,11 @@ if __name__ == '__main__':
     # Parse the arguments, turn them into a configuration object, report that
     args = parser.parse_args()
 
+    # From https://stackoverflow.com/questions/10698468/argparse-check-if-any-arguments-have-been-passed#10699527
+    if not len(sys.argv) > 1:
+        parser.print_help()
+        exit(1)
+
     # Necessary since I disabled the auto-'help' argument so that it wouldn't
     # print as part of an 'optional' header
     if args.help:
