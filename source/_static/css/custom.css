@@ -1,8 +1,12 @@
+@import '../alabaster.css'; 
 
 .jupyter_cell .output pre {
     line-height: 0.7em;
     font-size: 0.7em;
+    overflow: visible;
+    overflow-y: visible;
 }
+
 
 .jupyter_cell .output {
     margin: 0em;
