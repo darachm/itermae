@@ -3,21 +3,24 @@
 Examples
 ========
 
-The examples are run using using `jupyter-execute`_, so should be reproducible
-for you if you install ``itermae`` and run them from inside the package repo.
-
-.. _jupyter-execute: a link
+The examples are run using using 
+`jupyter-sphinx <https://jupyter-sphinx.readthedocs.io/en/latest/>`_, 
+so should be reproducible for you if you install ``itermae`` 
+and run them from inside the package repo.
 
 .. jupyter-kernel:: bash
     :id: bashy
+
+Boring minimal example
+-------------------------
+
 
 .. jupyter-execute::
     :stderr:
     :raises:
 
-    itermae 
-
-
+    head -n 8 itermae/data/toy.fastq \
+        | itermae -m "input > ." -os "input"
 
 Parsing an sample index and UMI from the beginning of short-reads
 ------------------------------------------------------------------
