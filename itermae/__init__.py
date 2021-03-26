@@ -18,332 +18,425 @@ from Bio import Seq, SeqRecord
 
 ##### Input configuration handling utilities
 
-# IUPAC dictionary for translating codes to regex.
-# Note the inclusion of * and + for repeats.
-# from http://www.bioinformatics.org/sms/iupac.html
-iupac_codes = { # only used for the configuration file input!
-    'A':'A', 'C':'C', 'T':'T', 'G':'G',
-    'R':'[AG]', 'Y':'[CT]', 'S':'[GC]', 'W':'[AT]',
-    'K':'[GT]', 'M':'[AC]',
-    'B':'[CGT]', 'D':'[AGT]', 'H':'[ACT]', 'V':'[ACG]',
-    'N':'[ATCGN]', '*':'.*', '+':'.+' }
 
 
-def config_from_file(file_path):
+class Configuration:
     """
-    Tries to parse a configuration YAML file, and form a dictionary to pass into
-    the main itermae reader function.
+    This is for configuring itermae, from YAML or CLI arguments.
     """
 
-    configuration = {}
-    # Verbosely attempt to read it, and I want a hard exit if it's not parsed
-    try:
-        with open(file_path,'r') as f:
-            config = yaml.load(f,Loader=yaml.SafeLoader)
-    except:
-        print('I failed to parse the supplied YAML file path name.',
-            file=sys.stderr)
-        raise
-    # Looking for verbosity instruction global, if not global, then in 'outputs'
-    try:
-        try:
-            verbosity = config['verbosity']
-        except:
-            verbosity = config['output']['verbosity']
-    except:
-        verbosity = 0 # else, just keep it bottled it up and tell no one 0_0
-    configuration['verbosity'] = verbosity
-    # Immediately use that verbostiy
-    if verbosity >= 1:
-        print("Reading and processing the configuration file '"+
-            str(file_path)+"'.",file=sys.stderr)
+    def __init__(self):
+        self.verbosity = 0
+        self.matches_array = []
+        self.outputs_array = []
+        self.untitled_group_number = 0
+        self.untitled_output_number = 0
+        self.input = 'STDIN'
+        self.input_format = 'fastq'
+        self.gzipped = False
+        self.to = 'STOUT'
+        self.output_format = 'sam'
+        self.failed = None
+        self.report = None
+        self.matches_array = []
+        self.outputs_array = []
+        self.output_fh = None
+        self.failed_fh = None
+        self.report_fh = None
 
-    # Building array of matches objects, so input and compiled regex
-    matches_array = []
-    if verbosity >= 1:
-        print("Processing each match:",file=sys.stderr)
-    for each in config['matches']:
-        try:
-            each['use']
-        except:
-            each['use'] = 'input'
-        if verbosity >= 1:
-            print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
-        if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
-            print("Error in reading yaml config! "+
-                "It looks like you've repeated a group marking "+
-                "character to match in multiple places. I do not support "+
-                "that, use a different character.",file=sys.stderr)
-            raise
-        if len(each['pattern']) != len(each['marking']):
-            print("Error in reading yaml config! "+
-                "The pattern and marking you've defined are of "+
-                "different lengths. I need them to be the same length.",
+        # IUPAC dictionary for translating codes to regex.
+        # from http://www.bioinformatics.org/sms/iupac.html
+        # Note the inclusion of * and + for repeats.
+        self.iupac_codes = { # only used for the configuration file input!
+            'A':'A', 'C':'C', 'T':'T', 'G':'G',
+            'R':'[AG]', 'Y':'[CT]', 'S':'[GC]', 'W':'[AT]',
+            'K':'[GT]', 'M':'[AC]',
+            'B':'[CGT]', 'D':'[AGT]', 'H':'[ACT]', 'V':'[ACG]',
+            'N':'[ATCGN]', '*':'.*', '+':'.+' }
+
+    def open_input_fh(self):
+        if self.input.upper() == 'STDIN':
+            if self.gzipped:
+                print("I can't handle gzipped inputs on STDIN ! "+
+                    "You shouldn't see this error, it shoulda been caught in "+
+                    "the launcher script.",file=sys.stderr) 
+                raise
+            else:
+                self.input_fh = sys.stdin
+        else:
+            if self.gzipped:
+                self.input_fh = gzip.open(self.input,'rt',encoding='ascii')
+            else:
+                self.input_fh = open(self.input,'rt')
+
+    def open_appropriate_input_format(self):
+        if   self.input_format == 'fastq':
+            self.input_seqs = SeqIO.parse(self.input_fh, self.input_format)
+        elif self.input_format == 'sam':
+            self.input_seqs = iter(read_sam_file(self.input_fh))
+        elif self.input_format == 'fasta':
+            self.input_seqs = SeqIO.parse(self.input_fh, self.input_format)
+        elif self.input_format == 'txt':
+            self.input_seqs = iter(read_txt_file(self.input_fh))
+        else:
+            print("I don't know that input file format name '"+self.input_format+
+                "'. I will try and use the provided format name in BioPython "+
+                "SeqIO, and we will find out together if that works.",
+                file=sys.stderr) 
+            self.input_seqs = SeqIO.parse(self.input_fh, self.input_format)
+
+    def get_input_seqs(self):
+        """
+        This calls 
+        to set the `input_seqs` attribute to be an iterator of BioPython
+        sequence records.
+        """
+        self.open_input_fh()
+        self.open_appropriate_input_format()
+
+    def open_output_fh(self,file_string):
+        if file_string is None:
+            return None
+        if file_string.upper() == 'STDOUT':
+            return sys.stdout
+        elif file_string.upper() == 'STDERR':
+            return sys.stderr
+        else:
+            return open(file_string,'a')
+
+    def open_output(self):
+        self.output_fh = self.open_output_fh(self.output)
+
+    def open_report(self):
+        self.report_fh = self.open_output_fh(self.report)
+
+    def open_failed(self):
+        self.failed_fh = self.open_output_fh(self.failed)
+
+    def close_fhs(self):
+        for i in [ self.input_seqs, self.output_fh, self.failed_fh, self.report_fh] :
+            try:
+                i.close()
+            except:
+                pass
+
+    def check_reserved_name(self,name,
+            reserved_names=['dummyspacer','input','id','description'] ):
+        """
+        This is just to check that the name is not one of these, if so, error out.
+        - 'dummyspacer' is so you can pop an X into your sequence as a separator
+            delimiter for later processing
+        - 'input' is the input group, the original one
+        - 'id' is the input ID, here just as 'id' so it's easy to find
+        - 'description' is for mapping over the FASTQ description
+        """
+        if name in reserved_names:
+            print("Hey, you can't name a capture group "+
+                (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
+                ", I'm using that/those! Pick a different name.",
                 file=sys.stderr)
             raise
-        regex_groups = dict()
-        group_order = list() # This is to keep track of the order in which
-            # the groups are being defined in the paired lines
-        for character, mark in zip(each['pattern'],each['marking']):
-            if mark not in group_order:
-                group_order.append(mark)
-            try:
-                regex_groups[mark] += iupac_codes[character.upper()]
-                    # This is adding on the pattern for a certain marked
-                    # matching group, as zipped above, and we're using
-                    # IUPAC codes to turn ambiguity codes into ranges
-                    # Note that it is converted to upper case!
-            except:
-                regex_groups[mark] = iupac_codes[character.upper()]
-        regex_string = '' # building this now
-        i = 0 # this is for keeping track of the untitled group numbering
-        for mark in group_order:
-            if 'name' in each['marked_groups'][mark].keys():
-                check_reserved_name(each['marked_groups'][mark]['name'])
-            else:
-                each['marked_groups'][mark]['name'] = "untitled_group"+str(i)
-                i += 1
-            if verbosity >= 1:
-                print("        Found group '"+mark+"' with pattern '"+
-                    regex_groups[mark]+"'",end="",file=sys.stderr)
-            try: # trying to build a repeat range, if supplied
-                if 'repeat_min' not in each['marked_groups'][mark].keys():
-                    each['marked_groups'][mark]['repeat_min'] = \
-                        each['marked_groups'][mark]['repeat']
-                if 'repeat_max' not in each['marked_groups'][mark].keys():
-                    each['marked_groups'][mark]['repeat_max'] = \
-                        each['marked_groups'][mark]['repeat']
-                regex_groups[mark] = ('('+regex_groups[mark]+')'+
-                    '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
-                        str(each['marked_groups'][mark]['repeat_max'])+'}'
-                    )
-                if verbosity >= 1:
-                    print(", repeated between "+
-                        str(each['marked_groups'][mark]['repeat_min'])+
-                        " and "+
-                        str(each['marked_groups'][mark]['repeat_max'])+
-                        " times",end="",file=sys.stderr)
-            except:
-                pass
-            error_array = [] # Then building the error tolerance spec
-            try: 
-                error_array.append(
-                    "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
-            except:
-                pass # This part takes up so much room because of try excepts...
-            try: 
-                error_array.append(
-                    "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
-            except:
-                pass
-            try: 
-                error_array.append(
-                    "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
-            except:
-                pass
-            try: 
-                error_array.append(
-                    "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
-            except:
-                pass
-            if len(error_array):
-                error_string = "{"+','.join(error_array)+"}"
-            else:
-                error_string = ""
-            if verbosity >= 1:
-                print(".\n",end="",file=sys.stderr)
-            regex_string += ( "(?<"+each['marked_groups'][mark]['name']+
-                ">"+regex_groups[mark]+")"+error_string )
-        # Okay, then use the built up regex_string to compile it
-        compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
-        # And save it with the input source used, in array
-        matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
-    configuration['matches'] = matches_array
 
-    if verbosity >= 1:
-        print("Processing output specifications.",file=sys.stderr)
-    output_list = config['output']['list'] # I do need some outputs, or fail
-    outputs_array = [] 
-    i = 0 # this is for naming untitled outputs sequentially
-    for each in output_list:
-        try:
-            each['id']
-        except:
-            each['id'] = 'id' # default, the id
-        try:
-            each['description']
-        except:
-            each['description'] = 'description' # default pass through from in
-        try:
-            each['name']
-        except:
-            each['name'] = 'untitled_output_'+str(i)
-            i += 1
-        try:
-            each['filter']
-        except:
-            each['filter'] = 'True' # so will pass if not provided
-        if verbosity >= 1:
-            print("    Parsing output specification of '"+each['name']+"', "+
-                "ID is '"+each['id']+"' (input ID is 'id'), filter outputs "+
-                "to accept only if '"+each['filter']+"' is True, with "+
-                "sequence derived from '"+each['seq']+"', and a description "+
-                "of '"+each['description']+"' ('description' is input "+
-                "description').",file=sys.stderr)
-        outputs_array.append( {
-                'name':each['name'],
-                'filter':[ each['filter'],
-                    compile(each['filter'],'<string>','eval',optimize=2) ],
-                'id':[ each['id'], 
-                    compile(each['id'],'<string>','eval',optimize=2) ],
-                'seq':[ each['seq'],
-                    compile(each['seq'],'<string>','eval',optimize=2) ],
-                'description':[ each['description'],
-                    compile(each['description'],'<string>','eval',optimize=2) ]
-            })
-    configuration['output_groups'] = outputs_array
-
-    # Passing through rest or setting defaults
-    try:
-        configuration['input'] = config['input']['from']
-    except:
-        configuration['input'] = 'STDIN'
-    try:
-        configuration['input_format'] = config['input']['format']
-    except:
-        configuration['input_format'] = 'fastq'
-    try:
-        configuration['input_gzipped'] = config['input']['gzipped']
-    except:
-        configuration['input_gzipped'] = False
-    try:
-        configuration['output'] = config['output']['to']
-    except:
-        configuration['output'] = 'STDOUT'
-    try:
-        configuration['output_format'] = config['output']['format']
-    except:
-        configuration['output_format'] = 'sam'
-    try:
-        configuration['failed'] = config['output']['failed']
-    except:
-        configuration['failed'] = None
-    try:
-        configuration['report'] = config['output']['report']
-    except:
-        configuration['report'] = None
-
-    return configuration
-
-
-def config_from_args(args_copy):
-    """
-    Make configuration object from arguments provided. Should be the same as 
-    the config_from_yaml output, if supplied the same.
-    """
-
-    configuration = {}
-    verbosity = configuration['verbosity'] = args_copy.verbose
-
-    # Make matches array
-    try:
-        matches_array = []
-        for each in args_copy.match:
-            for capture_name in re.findall('<(.*?)>',each):
-                check_reserved_name(capture_name)
-            try:
-                (input_string, regex_string) = re.split("\s>\s",each.strip())
-            except:
-                input_string = 'input' # default to just use raw input
-                regex_string = each.strip()
-            compiled_regex = regex.compile(
-                regex_string.strip(), # We use this regex
-                regex.BESTMATCH # And we use the BESTMATCH strategy, I think
-                )
-            matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
-    except:
-        print("I failed to build matches array from the arguments supplied.",
-            file=sys.stderr)
-        raise
-    configuration['matches'] = matches_array
-
-    # Adding in defaults for outputs, may be redundant with argparse settings...
-    if args_copy.output_id is None:
-        args_copy.output_id = ['id']
-    if args_copy.output_filter is None:
-        args_copy.output_filter = ['True']
-    if args_copy.output_description is None:
-        args_copy.output_description = ['description']
-
-    # Normalizing all singletons to same length
-    maximum_number_of_outputs = max( [len(args_copy.output_id), 
-        len(args_copy.output_seq), len(args_copy.output_filter),
-        len(args_copy.output_description)] )
-    if len(args_copy.output_id) == 1:
-        args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
-    if len(args_copy.output_seq) == 1:
-        args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
-    if len(args_copy.output_filter) == 1:
-        args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
-    if len(args_copy.output_description) == 1:
-        args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
-    if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
-            len(args_copy.output_filter) == len(args_copy.output_description) ):
-        print("The output IDs, seqs, descriptions, and filters are of unequal "+
-            "sizes. Make them equal, or only define one each and it will be "+
-            "reused across all.",file=sys.stderr)
-        raise
-
-    try:
-        i = 0
-        outputs_array = [] 
-        for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
-            this_name = 'output_'+str(i)
-            i += 1
-            outputs_array.append( {   
-                    'name': this_name,
-                    'filter': [ filterz,
-                        compile(filterz,'<string>','eval',optimize=2) ],
-                    'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
-                    'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
-                    'description':[ description, compile(description,'<string>','eval',optimize=2) ]
-                })
-    except:
-        print("I failed to build outputs array from the arguments supplied.",
-            file=sys.stderr)
-        raise
-    configuration['output_groups'] = outputs_array
+    def config_from_file(self,file_path):
+        """
+        Tries to parse a configuration YAML file to update this configuration
+        object. Recommend you run this config first, then config_from_args.
+        Pass in the file path as an argument.
+        """
     
-    # Passing through the rest, defaults should be set in argparse defs
-    configuration['input'] = args_copy.input
-    configuration['input_gzipped'] = args_copy.gzipped
-    configuration['input_format'] = args_copy.input_format
-    configuration['output'] = args_copy.output
-    configuration['output_format'] = args_copy.output_format
-    configuration['failed'] = args_copy.failed
-    configuration['report'] = args_copy.report
- 
-    return configuration
+        try:
+            with open(file_path,'r') as f:
+                config = yaml.load(f,Loader=yaml.SafeLoader)
+        except:
+            print('I failed to parse the supplied YAML file path name.',
+                file=sys.stderr)
+            raise
 
+        # Looking for verbosity instruction global, if not global, then in 'outputs'
+        try:
+            try:
+                self.verbosity = config['verbosity']
+            except:
+                self.verbosity = config['output']['verbosity']
+        except:
+            pass
 
-def check_reserved_name(name,
-        reserved_names=['dummyspacer','input','id','description'] ):
-    """
-    This is just to check that the name is not one of these, if so, error out.
+        # Immediately use that verbostiy
+        if self.verbosity >= 1:
+            print("Reading and processing the configuration file '"+
+                str(file_path)+"'.",file=sys.stderr)
+    
+        # Building array of matches objects, so input and compiled regex
+        if self.verbosity >= 1:
+            print("Processing each match:",file=sys.stderr)
+        for each in config['matches']:
+            try:
+                each['use']
+            except:
+                each['use'] = 'input'
+            if self.verbosity >= 1:
+                print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
+            if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
+                print("Error in reading yaml config! "+
+                    "It looks like you've repeated a group marking "+
+                    "character to match in multiple places. I do not support "+
+                    "that, use a different character.",file=sys.stderr)
+                raise
+            if len(each['pattern']) != len(each['marking']):
+                print("Error in reading yaml config! "+
+                    "The pattern and marking you've defined are of "+
+                    "different lengths. I need them to be the same length.",
+                    file=sys.stderr)
+                raise
+            pattern_groups = dict()
+            group_order = list() # This is to keep track of the order in which
+                # the groups are being defined in the paired lines
+            for character, mark in zip(each['pattern'],each['marking']):
+                if mark not in group_order:
+                    group_order.append(mark)
+                try:
+                    pattern_groups[mark] += character.upper()
+                except:
+                    pattern_groups[mark] = character.upper()
 
-    - 'dummyspacer' is so you can pop an X into your sequence as a separator
-        delimiter for later processing
-    - 'input' is the input group, the original one
-    - 'id' is the input ID, here just as 'id' so it's easy to find
-    - 'description' is for mapping over the FASTQ description
+            regex_string = '' # building this now
+            for mark in group_order:
 
-    """
-    if name in reserved_names:
-        print("Hey, you can't name a capture group "+
-            (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
-            ", I'm using that/those! Pick a different name.",
-            file=sys.stderr)
-        raise
+                if 'name' in each['marked_groups'][mark].keys():
+                    self.check_reserved_name(each['marked_groups'][mark]['name'])
+                else:
+                    each['marked_groups'][mark]['name'] = "untitled_group"+\
+                        str(self.untitled_group_number)
+                    self.untitled_group_number += 1
+
+                pattern_string = ""
+                if len(set(pattern_groups[mark])) == 1:
+                    pattern_string = self.iupac_codes[pattern_groups[mark][0].upper()]
+                else:
+                    for character in pattern_groups[mark]:
+                        pattern_string += self.iupac_codes[character.upper()]
+                        # This is adding on the pattern for a certain marked
+                        # matching group, as zipped above, and we're using
+                        # IUPAC codes to turn ambiguity codes into ranges
+                        # Note that it is converted to upper case!
+
+                if self.verbosity >= 1:
+                    print("        Found group '"+mark+"' with pattern '"+
+                        pattern_string+"'",end="",file=sys.stderr)
+
+                try: # trying to build a repeat range, if supplied
+                    if 'repeat_min' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_min'] = \
+                            each['marked_groups'][mark]['repeat']
+                    if 'repeat_max' not in each['marked_groups'][mark].keys():
+                        each['marked_groups'][mark]['repeat_max'] = \
+                            each['marked_groups'][mark]['repeat']
+                    pattern_string = ('('+pattern_string+')'+
+                        '{'+str(each['marked_groups'][mark]['repeat_min'])+','+
+                            str(each['marked_groups'][mark]['repeat_max'])+'}'
+                        )
+                    if self.verbosity >= 1:
+                        print(", repeated between "+
+                            str(each['marked_groups'][mark]['repeat_min'])+
+                            " and "+
+                            str(each['marked_groups'][mark]['repeat_max'])+
+                            " times",end="",file=sys.stderr)
+                except:
+                    pass
+
+                error_array = [] # Then building the error tolerance spec
+                try: 
+                    error_array.append(
+                        "e<="+str(each['marked_groups'][mark]['allowed_errors']) )
+                except:
+                    pass # This part takes up so much room because of try excepts...
+                try: 
+                    error_array.append(
+                        "i<="+str(each['marked_groups'][mark]['allowed_insertions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "d<="+str(each['marked_groups'][mark]['allowed_deletions']) )
+                except:
+                    pass
+                try: 
+                    error_array.append(
+                        "s<="+str(each['marked_groups'][mark]['allowed_substitutions']) )
+                except:
+                    pass
+                if len(error_array):
+                    error_string = "{"+','.join(error_array)+"}"
+                else:
+                    error_string = ""
+                if self.verbosity >= 1:
+                    print(".\n",end="",file=sys.stderr)
+
+                regex_string += ( "(?<"+each['marked_groups'][mark]['name']+
+                    ">"+pattern_string+")"+error_string )
+
+            # Okay, then use the built up regex_string to compile it
+            compiled_regex = regex.compile( regex_string, regex.BESTMATCH )
+            # And save it with the input source used, in array
+            self.matches_array.append( {'input':each['use'], 'regex':compiled_regex} )
+    
+        if self.verbosity >= 1:
+            print("Processing output specifications.",file=sys.stderr)
+
+        output_list = config['output']['list'] # I do need some outputs, or fail
+        for each in output_list:
+
+            try:
+                each['id']
+            except:
+                each['id'] = 'id' # default, the id
+            try:
+                each['description']
+            except:
+                each['description'] = 'description' # default pass through from in
+            try:
+                each['name']
+            except:
+                each['name'] = 'untitled_output_'+str(self.untitled_output_number)
+                self.untitled_output_number += 1
+            try:
+                each['filter']
+            except:
+                each['filter'] = 'True' # so will pass if not provided
+
+            if self.verbosity >= 1:
+                print("    Parsing output specification of '"+each['name']+"', "+
+                    "ID is '"+each['id']+"' (input ID is 'id'), filter outputs "+
+                    "to accept only if '"+each['filter']+"' is True, with "+
+                    "sequence derived from '"+each['seq']+"', and a description "+
+                    "of '"+each['description']+"' ('description' is input "+
+                    "description').",file=sys.stderr)
+
+            self.outputs_array.append( {
+                    'name':each['name'],
+                    'filter':[ each['filter'],
+                        compile(each['filter'],'<string>','eval',optimize=2) ],
+                    'id':[ each['id'], 
+                        compile(each['id'],'<string>','eval',optimize=2) ],
+                    'seq':[ each['seq'],
+                        compile(each['seq'],'<string>','eval',optimize=2) ],
+                    'description':[ each['description'],
+                        compile(each['description'],'<string>','eval',optimize=2) ]
+                })
+
+    def config_from_args(self,args_copy):
+        """
+        Make configuration object from arguments provided. Should be the same as 
+        the config_from_yaml output, if supplied the same.
+        """
+    
+        if args_copy.verbose:
+            self.verbosity = args_copy.verbose
+
+        for each in args_copy.match:
+            try:
+                for capture_name in re.findall('<(.*?)>',each):
+                    self.check_reserved_name(capture_name)
+                try:
+                    (input_string, regex_string) = re.split("\s>\s",each.strip())
+                except:
+                    input_string = 'input' # default to just use raw input
+                    regex_string = each.strip()
+                compiled_regex = regex.compile(
+                    regex_string.strip(), # We use this regex
+                    regex.BESTMATCH # And we use the BESTMATCH strategy, I think
+                    )
+                self.matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
+            except:
+                print("I failed to build matches array from the arguments supplied.",
+                    file=sys.stderr)
+                raise
+
+        # Adding in defaults for outputs. Can't do that with argparse, I think,
+        # because this needs to be appending
+        maximum_number_of_outputs = max( [len(args_copy.output_id), 
+            len(args_copy.output_seq), len(args_copy.output_filter),
+            len(args_copy.output_description)] )
+
+        if maximum_number_of_outputs:
+            if args_copy.output_id is []:
+                args_copy.output_id = ['id']
+            if args_copy.output_filter is []:
+                args_copy.output_filter = ['True']
+            if args_copy.output_description is []:
+                args_copy.output_description = ['description']
+
+            # Normalizing all singletons to same length
+            if len(args_copy.output_id) == 1:
+                args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
+            if len(args_copy.output_seq) == 1:
+                args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
+            if len(args_copy.output_filter) == 1:
+                args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
+            if len(args_copy.output_description) == 1:
+                args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
+            if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
+                    len(args_copy.output_filter) == len(args_copy.output_description) ):
+                print("The output IDs, seqs, descriptions, and filters are of unequal "+
+                    "sizes. Make them equal, or only define one each and it will be "+
+                    "reused across all.",file=sys.stderr)
+                raise
+    
+            try:
+                i = 0
+                for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
+                    this_name = 'output_'+str(i)
+                    i += 1
+                    self.outputs_array.append( {   
+                            'name': this_name,
+                            'filter': [ filterz,
+                                compile(filterz,'<string>','eval',optimize=2) ],
+                            'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
+                            'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
+                            'description':[ description, compile(description,'<string>','eval',optimize=2) ]
+                        })
+            except:
+                print("I failed to build outputs array from the arguments supplied.",
+                    file=sys.stderr)
+                raise
+        
+        # Passing through the rest, defaults should be set in argparse defs
+        if args_copy.input is not None:
+            self.input = args_copy.input
+        if args_copy.input_format is not None:
+            self.input_format = args_copy.input_format
+        if args_copy.gzipped is not None:
+            self.gzipped = args_copy.gzipped
+        if args_copy.output is not None:
+            self.output = args_copy.output
+        if args_copy.output_format is not None:
+            self.output_format = args_copy.output_format
+        if args_copy.failed is not None:
+            self.failed = args_copy.failed
+        if args_copy.report is not None:
+            self.report = args_copy.report
+
+    def summary(self):
+        return_string = ('Configured as:'+
+            '\n    input from: '+self.input+
+            '\n    input format: '+self.input_format+
+            '\n    is it gzipped?: '+str(self.gzipped)+
+            '\n    output APPENDING to: '+self.output+
+            '\n    output format is: '+self.output_format+
+            '\n    failed being APPENDED to file: '+str(self.failed)+
+            '\n    report being APPENDED to file: '+str(self.report)+
+            '\n    with verbosity set at: '+str(self.verbosity)+
+            '\n    doing these matches:')
+        for each in self.matches_array:
+            return_string += '\n        input: '+each['input']
+            return_string += '\n        regex: '+str(each['regex'])
+        return_string += '\n    writing these outputs:'
+        for each in self.outputs_array:
+            return_string += '\n        id: '+str(each['id'][0])
+            return_string += '\n        description: '+str(each['description'][0])
+            return_string += '\n        seq: '+str(each['seq'][0])
+            return_string += '\n        filter: '+str(each['filter'][0])
+        return return_string
 
 
 class MatchScores:
@@ -374,6 +467,7 @@ class GroupStats:
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 
+# TODO change this to be where chop is a method of the seq holder
 class SeqHolder: 
     """
     This is the main holder of sequences, and does the matching and stuff.
@@ -592,47 +686,6 @@ def read_txt_file(fh):
         yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
 
 
-def open_appropriate_input_format(in_fh, format_name):
-    if   format_name == 'fastq':
-        return SeqIO.parse(in_fh, format_name)
-    elif format_name == 'sam':
-        return iter(read_sam_file(in_fh))
-    elif format_name == 'fasta':
-        return SeqIO.parse(in_fh, format_name)
-    elif format_name == 'txt':
-        return iter(read_txt_file(in_fh))
-    else:
-        print("I don't know that input file format name '"+format_name+
-            "'. I will try and use the provided format name in BioPython "+
-            "SeqIO, and we will find out together if that works.",
-            file=sys.stderr) 
-        return SeqIO.parse(in_fh, format_name)
-
-
-def open_input_fh(file_string,gzipped=False):
-    if file_string.upper() == 'STDIN':
-        if gzipped:
-            print("I can't handle gzipped inputs on STDIN ! "+
-                "You shouldn't see this error, it shoulda been caught in "+
-                "the launcher script.",file=sys.stderr) 
-            raise
-        else:
-            return sys.stdin
-    else:
-        if gzipped:
-            return gzip.open(file_string,'rt',encoding='ascii')
-        else:
-            return open(file_string,'rt')
-
-
-def open_output_fh(file_string):
-    if file_string.upper() == 'STDOUT':
-        return sys.stdout
-    elif file_string.upper() == 'STDERR':
-        return sys.stderr
-    else:
-        return open(file_string,'a')
-
 
 def reader(configuration):
     """
@@ -644,23 +697,15 @@ def reader(configuration):
     ### Open up file handles
 
     # Input
-    input_seqs = open_appropriate_input_format(
-        open_input_fh(configuration['input'],configuration['input_gzipped']),
-        configuration['input_format'])
+    configuration.get_input_seqs()
 
     # Outputs - passed records, failed records, report file
-    output_fh = open_output_fh(configuration['output'])
-    try:
-        failed_fh = open_output_fh(configuration['failed'])
-    except:
-        failed_fh = None
-    try:
-        report_fh = open_output_fh(configuration['report'])
-    except:
-        report_fh = None
+    configuration.open_output()
+    configuration.open_failed()
+    configuration.open_report()
 
     # Do the chop-ing...
-    for each_seq in input_seqs:
+    for each_seq in configuration.input_seqs:
 
         # CAUTION
         # The below is a munge. 
@@ -674,20 +719,10 @@ def reader(configuration):
             each_seq.description).lstrip()
 
         chop(
-            seq_holder=SeqHolder(each_seq,verbosity=configuration['verbosity']),  
-            operations_array=configuration['matches'],
-            outputs_array=configuration['output_groups'],
-            out_format=configuration['output_format'],
-            input_format=configuration['input_format'],
-            output_fh=output_fh, failed_fh=failed_fh, report_fh=report_fh,
-            verbosity=configuration['verbosity']
-            )
+            seq_holder=SeqHolder(each_seq,verbosity=configuration.verbosity),  
+            configuration=configuration )
 
-    for i in [ input_seqs, output_fh, failed_fh, report_fh] :
-        try:
-            i.close()
-        except:
-            pass
+    configuration.close_fhs()
 
     return(0)
 
@@ -718,8 +753,7 @@ def write_out_seq(seq,fh,format,which):
         SeqIO.write(seq, fh, format) 
 
 
-def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
-    output_fh, failed_fh, report_fh, verbosity ):
+def chop( seq_holder, configuration):
     """
     This one takes each record, applies the operations, evaluates the filters,
     generates outputs, and writes them to output handles as appropriate.
@@ -729,25 +763,25 @@ def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
     if 'phred_quality' not in seq_holder.seqs['input'].letter_annotations.keys():
         seq_holder.seqs['input'].letter_annotations['phred_quality'] = [40]*len(seq_holder.seqs['input'])
 
-        if verbosity >= 2:
+        if configuration.verbosity >= 2:
             print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
                 "to sequence.", file=sys.stderr)
 
-    # For chop grained verbosity, report
-    if verbosity >= 2:
+    # For chop grained configuration.verbosity, report
+    if configuration.verbosity >= 2:
         print("\n["+str(time.time())+"] : starting to process : "+
             seq_holder.seqs['input'].id+"\n  "+seq_holder.seqs['input'].seq+"\n  "+ 
             str(seq_holder.seqs['input'].letter_annotations['phred_quality']),
             file=sys.stderr)
 
     # This should fail if you didn't specify anything taking from input stream!
-    assert operations_array[0]['input'] == "input", (
+    assert configuration.matches_array[0]['input'] == "input", (
         "can't find the sequence named `input`, rather we see `"+
-        operations_array[0]['input']+"` in the holder, so breaking. You should "+
+        configuration.matches_array[0]['input']+"` in the holder, so breaking. You should "+
         "have the first operation start with `input` as a source." )
 
     # Next, iterate through the matches, applying each one
-    for operation_number, operation in enumerate(operations_array):
+    for operation_number, operation in enumerate(configuration.matches_array):
 
         seq_holder.apply_operation( 'match_'+str(operation_number),
                 operation['input'], operation['regex'] )
@@ -759,7 +793,7 @@ def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
 
     # Then we eval the filters and build outputs, for each output
     output_records = []
-    for each_output in outputs_array:
+    for each_output in configuration.outputs_array:
         output_records.append( { 
                 'name': each_output['name'],
                 'filter_result': seq_holder.evaluate_filter_of_output(each_output), 
@@ -771,24 +805,24 @@ def chop( seq_holder, operations_array, outputs_array, out_format, input_format,
             [ i['filter_result'] == False for i in output_records ] )
 
     # Then we can make the report CSV if asked for (mainly for debugging/tuning)
-    if report_fh != None:
+    if configuration.report_fh != None:
         for output_record in output_records:
             if output_record['filter_result']:
                 print( seq_holder.format_report( 
                         "PassedFilterFor_"+output_record['name'], 
-                        output_record['output'] ) ,file=report_fh)
+                        output_record['output'] ) ,file=configuration.report_fh)
             else:
                 print( seq_holder.format_report( 
                         "FailedFilterFor_"+output_record['name'], 
-                        output_record['output'] ) ,file=report_fh)
+                        output_record['output'] ) ,file=configuration.report_fh)
 
     # Finally, write all the outputs, to main stream if passed, otherwise to
     # the failed output (if provided)
     for output_record in output_records:
         if output_record['filter_result'] and output_record['output'] is not None:
-            write_out_seq(output_record['output'], output_fh, out_format, 
+            write_out_seq(output_record['output'], configuration.output_fh, configuration.output_format, 
                 output_record['name'])
-        elif failed_fh != None:
-            write_out_seq(seq_holder.seqs['input'], failed_fh, input_format, 
+        elif configuration.failed_fh != None:
+            write_out_seq(seq_holder.seqs['input'], configuration.failed_fh, configuration.input_format, 
                 output_record['name'])
 

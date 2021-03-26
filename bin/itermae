@@ -27,7 +27,7 @@ if __name__ == '__main__':
     See examples/docs. """)
 
     parser_input = parser.add_argument_group('Defining input sources')
-    parser_input.add_argument("-i","--input",default="STDIN",
+    parser_input.add_argument("-i","--input",
         help="""\
     Specify where the input reads are from. This can 
     be a file path, but the suggested default is 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     (ex: 'head -n 10000 file.fq | tail -n 100' )""")
 
     parser_match = parser.add_argument_group('Matches')
-    parser_match.add_argument("-m","--match",action="append",
+    parser_match.add_argument("-m","--match",action="append",default=[],
         help="""\
     Specify what is being matched against, the 
     regular expression, and what groups to extract.
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     filter -- unless there is only one, in which case it is recycled
     for all groups output.
     """)
-    parser_groups.add_argument("-oi","--output-id",action="append",
+    parser_groups.add_argument("-oi","--output-id",action="append",default=[],
         help="""\
     The ID field of an output. These should evaluate to a string 
     in Python. You can build this by concatenating together parts 
@@ -115,14 +115,14 @@ if __name__ == '__main__':
     description field.
     """)
     parser_groups.add_argument("-od","--output-description",action="append",
-        help="""\
+        default=[],help="""\
     The description field of an output. These should evaluate
     to a string in Python. You can build this by concatenating 
     together parts of the matched groups, such as:
 
     '"described as umi is "+umi' 
     """)
-    parser_groups.add_argument("-os","--output-seq",action="append",
+    parser_groups.add_argument("-os","--output-seq",action="append",default=[],
         help="""\
     The sequence of an output. This is evaluated to
     form a BioPython SeqRecord, so can be assembled 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     to insert an 'X' into the sequence for 
     subsequent parsing.""")
     parser_groups.add_argument("-of","--output-filter",action="append",
-        help="""\
+        default=[],help="""\
     Define a filter that must be true in order to
     output this group. This must evaluate to True or 
     False (in python), and can use some attributes 
@@ -183,59 +183,31 @@ if __name__ == '__main__':
         parser.print_help()
         exit(1)
 
+    configuration = itermae.Configuration()
+
     if args.config:
         try: 
-            configuration = itermae.config_from_file(args.config)
+            configuration.config_from_file(args.config)
         except:
             print("Configuring from that file '"+args.config+"' failed.",
                 file=sys.stderr)
             raise
-    else:
-        try:
-            configuration = itermae.config_from_args(args)
-        except:
-            print("Configuring from arguments failed.",file=sys.stderr)
-            raise
+    try:
+        configuration.config_from_args(args)
+    except:
+        print("Configuring from arguments failed.",file=sys.stderr)
+        raise
 
-    if configuration['verbosity'] >= 1:
-        print('Configured as:',file=sys.stderr)
-        print('    input from: '+configuration['input'],file=sys.stderr)
-        print('    input format: '+configuration['input_format'],file=sys.stderr)
-        print('    is it gzipped?: '+str(configuration['input_gzipped']),file=sys.stderr)
-        print('    output APPENDING to: '+configuration['output'],file=sys.stderr)
-        print('    output format is: '+configuration['output_format'],file=sys.stderr)
-        print('    failed being APPENDED to file: '+str(configuration['failed']),file=sys.stderr)
-        print('    report being APPENDED to file: '+str(configuration['report']),file=sys.stderr)
-        print('    with verbosity set at: '+str(configuration['verbosity']),file=sys.stderr)
-        print('    doing these matches:',file=sys.stderr)
-        for each in configuration['matches']:
-            print('        input: '+each['input'],file=sys.stderr)
-            print('        regex: '+str(each['regex']),file=sys.stderr)
-        print('    writing these outputs:',file=sys.stderr)
-        for each in configuration['output_groups']:
-            print('        id: '+str(each['id'][0]),file=sys.stderr)
-            print('        description: '+str(each['description'][0]),file=sys.stderr)
-            print('        seq: '+str(each['seq'][0]),file=sys.stderr)
-            print('        filter: '+str(each['filter'][0]),file=sys.stderr)
+    if configuration.verbosity >= 1:
+        print(configuration.summary(),file=sys.stderr)
 
-    if args.verbose >= 1:
+    if configuration.verbosity >= 1:
         print("["+str(time.time())+"] : Begin running the reader function "+
             "to initiate chopping...",file=sys.stderr)
 
     itermae.reader(configuration)
-        # Configuration should be dict with values under these names:
-        # input_file
-        # in_format
-        # is_gzipped
-        # output_file
-        # out_format
-        # failed_file
-        # report_file
-        # matches_array
-        # outputs_array
-        # verbosity
 
-    if args.verbose >= 1:
+    if configuration.verbosity >= 1:
         print("["+str(time.time())+"]"+" : "+
             "All worked 'till the work is done --- or some fatal error.",
             file=sys.stderr)
