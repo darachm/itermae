@@ -501,9 +501,9 @@ class SeqHolder:
         except:
             if self.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
-                    self.seqs['input'].id+" failed to build the output"+
-                    " id: "+str(output_dict['id'][0])+
-                    " seq: "+str(output_dict['seq'][0]) ,file=sys.stderr)
+                    self.seqs['input'].id+" failed to build the output of "+
+                    "id: '"+str(output_dict['id'][0])+"', and "+
+                    "seq: '"+str(output_dict['seq'][0])+"'." ,file=sys.stderr)
             return None
 
     def format_report(self,label,output_seq):
