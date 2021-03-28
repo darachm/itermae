@@ -147,19 +147,8 @@ if __name__ == '__main__':
         exit(1)
 
     configuration = itermae.Configuration()
-
-    if args.config:
-        try: 
-            configuration.config_from_file(args.config)
-        except:
-            print("Configuring from that file '"+args.config+"' failed.",
-                file=sys.stderr)
-            raise
-    try:
-        configuration.config_from_args(args)
-    except:
-        print("Configuring from arguments failed.",file=sys.stderr)
-        raise
+    configuration.config_from_file(args.config)
+    configuration.config_from_args(args)
 
     if configuration.verbosity >= 1:
         print(configuration.summary(),file=sys.stderr)

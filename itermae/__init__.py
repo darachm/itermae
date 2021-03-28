@@ -143,6 +143,9 @@ class Configuration:
         object. Recommend you run this config first, then config_from_args.
         Pass in the file path as an argument.
         """
+
+        if file_path == False:
+            return
     
         try:
             with open(file_path,'r') as f:
