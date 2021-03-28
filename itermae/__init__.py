@@ -10,11 +10,99 @@ import re
 import itertools
 import copy
 import io
-import yaml
 
+import yaml
 import regex
 from Bio import SeqIO
 from Bio import Seq, SeqRecord
+
+
+def format_sam_record(record_id, sequence, qualities, tags,
+        flag='0', reference_name='*', 
+        mapping_position='0', mapping_quality='255', cigar_string='*',
+        reference_name_of_mate='=', position_of_mate='0', template_length='0'
+    ):
+    return "\t".join([
+            record_id,
+            flag,
+            reference_name,
+            mapping_position,
+            mapping_quality,
+            cigar_string,
+            reference_name_of_mate,
+            position_of_mate,
+            template_length,
+            sequence,
+            qualities,
+            tags
+        ])
+
+
+def phred_letter_to_number(x):
+    return ord(x)-33
+
+
+def phred_number_to_letter(x):
+    return chr(x+33)
+
+
+def phred_number_array_to_joined_string(x):
+    return str("".join([ phred_number_to_letter(i) for i in x]))
+
+
+def read_sam_file(fh):
+    """
+    This is a minimal reader, just for getting the fields I like and emiting
+    SeqRecord objects, sort of like SeqIO. Putting SAM tags in description.
+    """
+    for i in fh.readlines():
+        fields = i.rstrip('\n').split('\t')
+        yield SeqRecord.SeqRecord(
+            Seq.Seq(fields[9]),
+            id=fields[0],
+            letter_annotations={'phred_quality':
+                [phred_letter_to_number(i) for i in fields[10]]},
+            description=fields[11]
+            )
+
+
+def read_txt_file(fh):
+    """
+    This just treats one sequence per line as a SeqRecord.
+    """
+    for i in fh.readlines():
+        seq = i.rstrip()
+        yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
+
+
+def fix_desc(seq_record):
+    """
+    According to https://github.com/biopython/biopython/issues/398 ,
+    BioPython mimics an old weird behavior by outputting the ID in the
+    description field. There's a fix for the FASTA writer, but not the
+    FASTQ ... so here we munge that by removing the ID from the description.
+
+    ... except that I don't know where to put this.
+    """
+    seq_record.description = re.sub(str(seq_record.id),"",seq_record.description)
+    return seq_record
+
+
+def write_out_seq(seq,fh,format,which):
+    if format == "sam":
+        print( format_sam_record( seq.id, str(seq.seq),
+                phred_number_array_to_joined_string(seq.letter_annotations['phred_quality']),
+                "IE:Z:"+str(which) ),file=fh)
+        # We ignore printing the description anywhere - if you need it, concat
+        # it onto the ID
+    elif format == "txt":
+        print( str(seq.seq), file=fh)
+    else:
+        SeqIO.write(seq, fh, format) 
+
+
+
+
 
 class Configuration:
     """
@@ -467,10 +555,9 @@ class Configuration:
             # after parsing.
             each_seq.description = re.sub(str(each_seq.id),"",
                 each_seq.description).lstrip()
-    
-            chop(
-                seq_holder=SeqHolder(each_seq,verbosity=self.verbosity),  
-                configuration=self )
+
+            seq_holder = SeqHolder(each_seq,configuration=self)
+            seq_holder.chop()
     
         self.close_fhs()
     
@@ -506,13 +593,12 @@ class GroupStats:
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 
-# TODO change this to be where chop is a method of the seq holder
 class SeqHolder: 
     """
     This is the main holder of sequences, and does the matching and stuff.
     I figured a Class might make it a bit tidier.
     """
-    def __init__(self, input_record, verbosity=4):
+    def __init__(self, input_record, configuration):
         # So the .seqs holds the sequences accessed by the matching, and there's
         # a dummyspacer in there just for making outputs where you want that
         # for later partitioning. Input is input.
@@ -520,7 +606,7 @@ class SeqHolder:
             'dummyspacer': SeqRecord.SeqRecord(Seq.Seq("X"),id="dummyspacer"),
             'input': input_record }
         self.seqs['dummyspacer'].letter_annotations['phred_quality'] = [40]
-        self.verbosity = verbosity
+        self.configuration = configuration
         # These two dicts hold the scores for each match operation (in order),
         # and the start end length statistics for each matched group.
         self.match_scores = {}
@@ -539,7 +625,7 @@ class SeqHolder:
             self.match_scores[match_id] = MatchScores(None,None,None)
             return self
 
-        if self.verbosity >= 3:
+        if self.configuration.verbosity >= 3:
             print("\n["+str(time.time())+"] : attempting to match : "+
                 str(regex)+" against "+self.seqs[input_group].seq,
                 file=sys.stderr)
@@ -548,7 +634,7 @@ class SeqHolder:
         # Note that the input is made uppercase!
         fuzzy_match = regex.search( str(self.seqs[input_group].seq).upper() )
 
-        if self.verbosity >= 3:
+        if self.configuration.verbosity >= 3:
             print("\n["+str(time.time())+"] : match is : "+str(fuzzy_match),
                 file=sys.stderr)
 
@@ -614,7 +700,7 @@ class SeqHolder:
         try:
             return eval(output_dict['filter'][1],globals(),self.context_filter)
         except:
-            if self.verbosity >= 3:
+            if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to evaluate the filter "+
                     str(output_dict['filter'][0]),file=sys.stderr)
@@ -632,7 +718,7 @@ class SeqHolder:
             out_seq.description = str(eval(output_dict['description'][1],globals(),self.context_id))
             return out_seq
         except:
-            if self.verbosity >= 3:
+            if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to build the output of "+
                     "id: '"+str(output_dict['id'][0])+"', and "+
@@ -666,161 +752,79 @@ class SeqHolder:
                         for i in self.group_stats ] )+
             "\"" ) # See group_stats method for what these are (start stop len)
 
-
-def format_sam_record(record_id, sequence, qualities, tags,
-        flag='0', reference_name='*', 
-        mapping_position='0', mapping_quality='255', cigar_string='*',
-        reference_name_of_mate='=', position_of_mate='0', template_length='0'
-    ):
-    return "\t".join([
-            record_id,
-            flag,
-            reference_name,
-            mapping_position,
-            mapping_quality,
-            cigar_string,
-            reference_name_of_mate,
-            position_of_mate,
-            template_length,
-            sequence,
-            qualities,
-            tags
-        ])
-
-
-def phred_letter_to_number(x):
-    return ord(x)-33
-
-
-def phred_number_to_letter(x):
-    return chr(x+33)
-
-
-def phred_number_array_to_joined_string(x):
-    return str("".join([ phred_number_to_letter(i) for i in x]))
-
-
-def read_sam_file(fh):
-    """
-    This is a minimal reader, just for getting the fields I like and emiting
-    SeqRecord objects, sort of like SeqIO. Putting SAM tags in description.
-    """
-    for i in fh.readlines():
-        fields = i.rstrip('\n').split('\t')
-        yield SeqRecord.SeqRecord(
-            Seq.Seq(fields[9]),
-            id=fields[0],
-            letter_annotations={'phred_quality':
-                [phred_letter_to_number(i) for i in fields[10]]},
-            description=fields[11]
-            )
-
-
-def read_txt_file(fh):
-    """
-    This just treats one sequence per line as a SeqRecord.
-    """
-    for i in fh.readlines():
-        seq = i.rstrip()
-        yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
-
-
-def fix_desc(seq_record):
-    """
-    According to https://github.com/biopython/biopython/issues/398 ,
-    BioPython mimics an old weird behavior by outputting the ID in the
-    description field. There's a fix for the FASTA writer, but not the
-    FASTQ ... so here we munge that by removing the ID from the description.
-
-    ... except that I don't know where to put this.
-    """
-    seq_record.description = re.sub(str(seq_record.id),"",seq_record.description)
-    return seq_record
-
-
-def write_out_seq(seq,fh,format,which):
-    if format == "sam":
-        print( format_sam_record( seq.id, str(seq.seq),
-                phred_number_array_to_joined_string(seq.letter_annotations['phred_quality']),
-                "IE:Z:"+str(which) ),file=fh)
-        # We ignore printing the description anywhere - if you need it, concat
-        # it onto the ID
-    elif format == "txt":
-        print( str(seq.seq), file=fh)
-    else:
-        SeqIO.write(seq, fh, format) 
-
-
-def chop( seq_holder, configuration):
-    """
-    This one takes each record, applies the operations, evaluates the filters,
-    generates outputs, and writes them to output handles as appropriate.
-    """
-
-    # If qualities are missing, add them as just 40
-    if 'phred_quality' not in seq_holder.seqs['input'].letter_annotations.keys():
-        seq_holder.seqs['input'].letter_annotations['phred_quality'] = [40]*len(seq_holder.seqs['input'])
-
-        if configuration.verbosity >= 2:
-            print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
-                "to sequence.", file=sys.stderr)
-
-    # For chop grained configuration.verbosity, report
-    if configuration.verbosity >= 2:
-        print("\n["+str(time.time())+"] : starting to process : "+
-            seq_holder.seqs['input'].id+"\n  "+seq_holder.seqs['input'].seq+"\n  "+ 
-            str(seq_holder.seqs['input'].letter_annotations['phred_quality']),
-            file=sys.stderr)
-
-    # This should fail if you didn't specify anything taking from input stream!
-    assert configuration.matches_array[0]['input'] == "input", (
-        "can't find the sequence named `input`, rather we see `"+
-        configuration.matches_array[0]['input']+"` in the holder, so breaking. You should "+
-        "have the first operation start with `input` as a source." )
-
-    # Next, iterate through the matches, applying each one
-    for operation_number, operation in enumerate(configuration.matches_array):
-
-        seq_holder.apply_operation( 'match_'+str(operation_number),
-                operation['input'], operation['regex'] )
-
-    # Now seq_holder should have a lot of matches, match scores and group stats,
-    # and matched sequences groups. All these values allow us to apply filters
-    # We unpack matches and scores into an internal environment for the filters
-    seq_holder.build_context()
-
-    # Then we eval the filters and build outputs, for each output
-    output_records = []
-    for each_output in configuration.outputs_array:
-        output_records.append( { 
-                'name': each_output['name'],
-                'filter_result': seq_holder.evaluate_filter_of_output(each_output), 
-                'output': seq_holder.build_output(each_output) 
-            } )
-
-    # This is just if we pass all the filters provided
-    passed_filters = not any( 
-            [ i['filter_result'] == False for i in output_records ] )
-
-    # Then we can make the report CSV if asked for (mainly for debugging/tuning)
-    if configuration.report_fh != None:
+    def chop(self):
+        """
+        This one takes each record, applies the operations, evaluates the filters,
+        generates outputs, and writes them to output handles as appropriate.
+        """
+    
+        # If qualities are missing, add them as just 40
+        if 'phred_quality' not in self.seqs['input'].letter_annotations.keys():
+            self.seqs['input'].letter_annotations['phred_quality'] = [40]*len(self.seqs['input'])
+    
+            if self.configuration.verbosity >= 2:
+                print("\n["+str(time.time())+"] : adding missing qualities of 40 "+
+                    "to sequence.", file=sys.stderr)
+    
+        # For chop grained self.configuration.verbosity, report
+        if self.configuration.verbosity >= 2:
+            print("\n["+str(time.time())+"] : starting to process : "+
+                self.seqs['input'].id+"\n  "+self.seqs['input'].seq+"\n  "+ 
+                str(self.seqs['input'].letter_annotations['phred_quality']),
+                file=sys.stderr)
+    
+        # This should fail if you didn't specify anything taking from input stream!
+        assert self.configuration.matches_array[0]['input'] == "input", (
+            "can't find the sequence named `input`, rather we see `"+
+            self.configuration.matches_array[0]['input']+"` in the holder, so breaking. You should "+
+            "have the first operation start with `input` as a source." )
+    
+        # Next, iterate through the matches, applying each one
+        for operation_number, operation in enumerate(self.configuration.matches_array):
+    
+            self.apply_operation( 'match_'+str(operation_number),
+                    operation['input'], operation['regex'] )
+    
+        # Now self should have a lot of matches, match scores and group stats,
+        # and matched sequences groups. All these values allow us to apply filters
+        # We unpack matches and scores into an internal environment for the filters
+        self.build_context()
+    
+        # Then we eval the filters and build outputs, for each output
+        output_records = []
+        for each_output in self.configuration.outputs_array:
+            output_records.append( { 
+                    'name': each_output['name'],
+                    'filter_result': self.evaluate_filter_of_output(each_output), 
+                    'output': self.build_output(each_output) 
+                } )
+    
+        # This is just if we pass all the filters provided
+        passed_filters = not any( 
+                [ i['filter_result'] == False for i in output_records ] )
+    
+        # Then we can make the report CSV if asked for (mainly for debugging/tuning)
+        if self.configuration.report_fh != None:
+            for output_record in output_records:
+                if output_record['filter_result']:
+                    print( self.format_report( 
+                            "PassedFilterFor_"+output_record['name'], 
+                            output_record['output'] ) ,file=self.configuration.report_fh)
+                else:
+                    print( self.format_report( 
+                            "FailedFilterFor_"+output_record['name'], 
+                            output_record['output'] ) ,file=self.configuration.report_fh)
+    
+        # Finally, write all the outputs, to main stream if passed, otherwise to
+        # the failed output (if provided)
         for output_record in output_records:
-            if output_record['filter_result']:
-                print( seq_holder.format_report( 
-                        "PassedFilterFor_"+output_record['name'], 
-                        output_record['output'] ) ,file=configuration.report_fh)
-            else:
-                print( seq_holder.format_report( 
-                        "FailedFilterFor_"+output_record['name'], 
-                        output_record['output'] ) ,file=configuration.report_fh)
+            if output_record['filter_result'] and output_record['output'] is not None:
+                write_out_seq(output_record['output'], self.configuration.output_fh, self.configuration.output_format, 
+                    output_record['name'])
+            elif self.configuration.failed_fh != None:
+                write_out_seq(self.seqs['input'], self.configuration.failed_fh, self.configuration.input_format, 
+                    output_record['name'])
 
-    # Finally, write all the outputs, to main stream if passed, otherwise to
-    # the failed output (if provided)
-    for output_record in output_records:
-        if output_record['filter_result'] and output_record['output'] is not None:
-            write_out_seq(output_record['output'], configuration.output_fh, configuration.output_format, 
-                output_record['name'])
-        elif configuration.failed_fh != None:
-            write_out_seq(seq_holder.seqs['input'], configuration.failed_fh, configuration.input_format, 
-                output_record['name'])
+
+
 
