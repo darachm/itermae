@@ -157,7 +157,7 @@ if __name__ == '__main__':
         print("["+str(time.time())+"] : Begin running the reader function "+
             "to initiate chopping...",file=sys.stderr)
 
-    itermae.reader(configuration)
+    configuration.reader()
 
     if configuration.verbosity >= 1:
         print("["+str(time.time())+"]"+" : "+

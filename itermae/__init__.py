@@ -16,10 +16,6 @@ import regex
 from Bio import SeqIO
 from Bio import Seq, SeqRecord
 
-##### Input configuration handling utilities
-
-
-
 class Configuration:
     """
     This is for configuring itermae, from YAML or CLI arguments.
@@ -441,6 +437,46 @@ class Configuration:
             return_string += '\n        filter: '+str(each['filter'][0])
         return return_string
 
+    def reader(self):
+        """
+        This reads inputs, calls the `chop` function on each one, and sorts it
+        off to outputs. So this is called by the main function, and is mostly about
+        handling the I/O. 
+        """
+    
+        ### Open up file handles
+    
+        # Input
+        self.get_input_seqs()
+    
+        # Outputs - passed records, failed records, report file
+        self.open_output()
+        self.open_failed()
+        self.open_report()
+    
+        # Do the chop-ing...
+        for each_seq in self.input_seqs:
+    
+            # CAUTION
+            # The below is a munge. 
+            # According to https://github.com/biopython/biopython/issues/398 ,
+            # BioPython mimics an old tool's weird behavior by outputting the 
+            # ID in the description field. The fix for it relies on a comparing
+            # a white-space 'split' to remove the ID if it's in the description.
+            # So that doesn't work if you modify the ID or so, so I remove right
+            # after parsing.
+            each_seq.description = re.sub(str(each_seq.id),"",
+                each_seq.description).lstrip()
+    
+            chop(
+                seq_holder=SeqHolder(each_seq,verbosity=self.verbosity),  
+                configuration=self )
+    
+        self.close_fhs()
+    
+        return(0)
+
+
 
 class MatchScores:
     """
@@ -687,47 +723,6 @@ def read_txt_file(fh):
     for i in fh.readlines():
         seq = i.rstrip()
         yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
-
-
-
-def reader(configuration):
-    """
-    This reads inputs, calls the `chop` function on each one, and sorts it
-    off to outputs. So this is called by the main function, and is mostly about
-    handling the I/O. 
-    """
-
-    ### Open up file handles
-
-    # Input
-    configuration.get_input_seqs()
-
-    # Outputs - passed records, failed records, report file
-    configuration.open_output()
-    configuration.open_failed()
-    configuration.open_report()
-
-    # Do the chop-ing...
-    for each_seq in configuration.input_seqs:
-
-        # CAUTION
-        # The below is a munge. 
-        # According to https://github.com/biopython/biopython/issues/398 ,
-        # BioPython mimics an old tool's weird behavior by outputting the 
-        # ID in the description field. The fix for it relies on a comparing
-        # a white-space 'split' to remove the ID if it's in the description.
-        # So that doesn't work if you modify the ID or so, so I remove right
-        # after parsing.
-        each_seq.description = re.sub(str(each_seq.id),"",
-            each_seq.description).lstrip()
-
-        chop(
-            seq_holder=SeqHolder(each_seq,verbosity=configuration.verbosity),  
-            configuration=configuration )
-
-    configuration.close_fhs()
-
-    return(0)
 
 
 def fix_desc(seq_record):
