@@ -23,7 +23,7 @@ if __name__ == '__main__':
         add_help=False)
 
     parser_config = parser.add_argument_group("Configuration file (optional)")
-    parser_config.add_argument("--config",default=False,
+    parser_config.add_argument("--config",
         help=("File path to the config file. If specified, overrules all "
             "other relevant arguments. See examples/docs.") )
 
@@ -33,25 +33,25 @@ if __name__ == '__main__':
             "path, but the suggested default is standard input ( 'STDIN' ).") )
     parser_input.add_argument("-z","--gzipped",action="store_true",
         help=("Use this flag if the input is a gzipped file.") )
-    parser_input.add_argument("--input-format",default='fastq',
+    parser_input.add_argument("--input-format",
         help=("Specify what format the input is. Default is 'FASTQ'. "
             "I expect this, or 'SAM', 'FASTA', or 'txt'. Case insensitive.") )
 
     parser_output = parser.add_argument_group("Defining where to output")
-    parser_output.add_argument("-o","--output",default="STDOUT",
+    parser_output.add_argument("-o","--output",
         help=("Specify where to output successful matched groups to. The "
             "recommended default is standard out ( 'STDOUT' ), but this can "
             "also be a filepath to write.") )
-    parser_output.add_argument("--output-format",default='sam',
+    parser_output.add_argument("--output-format",
         help=("Specify what format the output should be in. Default is an "
             "unmapped SAM ('SAM'), also available are 'FASTQ' and 'FASTA', "
             "case insensitive.") )
-    parser_output.add_argument("-f","--failed",default=None,
+    parser_output.add_argument("-f","--failed",
         help=("Optional filepath for passing-through the input reads that "
             "failed at any stage of matching, filtering, or forming output "
             "groups. Can also be directed to 'STDOUT' or 'STDERR' by "
             "specifying those.") )
-    parser_output.add_argument("-r","--report",default=None,
+    parser_output.add_argument("-r","--report",
         help=("Optional filepath for writing a report of read-level "
             "statistics. This is a large inefficient output, but useful for "
             "debugging by using with a small subset of the data (such as "
@@ -123,7 +123,7 @@ if __name__ == '__main__':
             "recycled to filter for all output groups.") )
 
     parser_misc = parser.add_argument_group()
-    parser_misc.add_argument("-v","--verbose",action="count",default=0,
+    parser_misc.add_argument("-v","--verbose",action="count",
         help=("Level of information to pipe out to STDERR. "
             "None of these means itermae runs silently. "
             "\n    -v prints setup messages and start-stop messsages."

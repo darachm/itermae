@@ -111,7 +111,7 @@ class Configuration:
         self.input = 'STDIN'
         self.input_format = 'fastq'
         self.gzipped = False
-        self.to = 'STOUT'
+        self.output = 'STDOUT'
         self.output_format = 'sam'
         self.failed = None
         self.report = None
@@ -238,6 +238,27 @@ class Configuration:
                 self.verbosity = config['verbosity']
             except:
                 self.verbosity = config['output']['verbosity']
+        except:
+            pass
+
+        try:
+            self.input = config['input']['from']
+        except:
+            pass
+        try:
+            self.input_format = config['input']['format']
+        except:
+            pass
+        try:
+            self.gzipped = config['input']['gzipped']
+        except:
+            pass
+        try:
+            self.output = config['output']['to']
+        except:
+            pass
+        try:
+            self.output_format = config['output']['format']
         except:
             pass
 
