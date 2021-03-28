@@ -19,9 +19,7 @@ if __name__ == '__main__':
     # I assume most of this is self-documenting.
 
     parser = argparse.ArgumentParser(
-        description=("itermae - iteratively chop up sequences using fuzzy "
-            "regular expressions."),
-        formatter_class=argparse.RawTextHelpFormatter,
+        description=("itermae - iteratively chop sequences using fuzzy regex"),
         add_help=False)
 
     parser_config = parser.add_argument_group("Configuration file (optional)")
@@ -76,13 +74,13 @@ if __name__ == '__main__':
             "\n\nFor more details, please refer to the README, documentation, "
             "and tutorial, and the regex module documentation.") )
 
-    parser_groups = parser.add_argument_group(
-        'Define groups output',
+    parser_groups = parser.add_argument_group('Define groups output',
         ("Each ID, sequence, and filter is grouped together used in order, "
             "so the first ID is used with the first sequence and the first "
             "filter -- unless there is only one, in which case it is recycled "
             "for all output groups.") )
-    parser_groups.add_argument("-oi","--output-id",action="append",default=[],
+    parser_groups.add_argument("-oi","--output-id",action="append",
+        default=[],
         help=("The ID field of an output. These should evaluate to a string "
             "in Python. You can build this by concatenating together parts "
             "of the matched groups, such as:"
@@ -91,7 +89,8 @@ if __name__ == '__main__':
             "each group (their name), which is the sequence matched. 'id' is "
             "input ID field, 'description' is input description field.") )
     parser_groups.add_argument("-od","--output-description",action="append",
-        default=[],help=("The description field of an output. These should "
+        default=[],
+        help=("The description field of an output. These should "
             "evaluate to a string in Python. You can build this by "
             "concatenating together 'description' (which represents the input "
             "description) and names of the matched groups to get their "
@@ -99,7 +98,8 @@ if __name__ == '__main__':
             "\n    'description+\" umi=\"+umi' "
             "\nwould output the input description, then ' umi=ATCG' or "
             "whatever sequence the 'umi' group has matched to.") )
-    parser_groups.add_argument("-os","--output-seq",action="append",default=[],
+    parser_groups.add_argument("-os","--output-seq",action="append",
+        default=[],
         help=("The sequence of an output. This is evaluated to form a "
             "BioPython SeqRecord, so can be assembled by combining the names of "
             "matched groups. For example:"
@@ -108,7 +108,8 @@ if __name__ == '__main__':
             "Group 'dummyspacer' is also available to insert an 'X' into the "
             "sequence for subsequent parsing.") )
     parser_groups.add_argument("-of","--output-filter",action="append",
-        default=[],help=("Define a filter that must be true in order to output "
+        default=[],
+        help=("Define a filter that must be true in order to output "
             "this group. This must evaluate to True or False (in python), and "
             "can use some attributes of the matches or matched groups. "
             "For example: "
@@ -121,7 +122,7 @@ if __name__ == '__main__':
             "examples. If there is only one filter defined, it is "
             "recycled to filter for all output groups.") )
 
-    parser_misc = parser.add_argument_group('')
+    parser_misc = parser.add_argument_group()
     parser_misc.add_argument("-v","--verbose",action="count",default=0,
         help=("Level of information to pipe out to STDERR. "
             "None of these means itermae runs silently. "
@@ -130,10 +131,11 @@ if __name__ == '__main__':
             "\n     -vvv also prints match-level details.") )
     parser_misc.add_argument("-h","--help",action="store_true",default=False)
 
-    # Parse the arguments, turn them into a configuration object, report that
+    # Parse the arguments
     args = parser.parse_args()
 
     # From https://stackoverflow.com/questions/10698468/argparse-check-if-any-arguments-have-been-passed#10699527
+    # This is a way to tell if you've not passed any arguments at all -> help!
     if not len(sys.argv) > 1:
         parser.print_help()
         exit(1)
