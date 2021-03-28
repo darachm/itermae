@@ -15,43 +15,48 @@ from Bio import SeqIO
 from Bio import Seq, SeqRecord
 
 
+# TODO pass description to flags field, but this requires lots of warnings
+# and caveats to the users that they will have to preface the right SAM tag
+# headers and such!
 def format_sam_record(record_id, sequence, qualities, tags,
-        flag='0', reference_name='*', 
-        mapping_position='0', mapping_quality='255', cigar_string='*',
-        reference_name_of_mate='=', position_of_mate='0', template_length='0'
-    ):
-    return "\t".join([
-            record_id,
-            flag,
-            reference_name,
-            mapping_position,
-            mapping_quality,
-            cigar_string,
-            reference_name_of_mate,
-            position_of_mate,
-            template_length,
-            sequence,
-            qualities,
-            tags
-        ])
+        flag='0', reference_name='*', mapping_position='0', 
+        mapping_quality='255', cigar_string='*', reference_name_of_mate='=', 
+        position_of_mate='0', template_length='0' ):
+    """
+    This is just a utility to format output sam records. I do not intend to
+    do much with this, so mainly just to set the lack of mapping easily!
+    """
+    return "\t".join([ record_id, flag, reference_name, mapping_position, 
+            mapping_quality, cigar_string, reference_name_of_mate, 
+            position_of_mate, template_length, sequence, qualities, tags ])
 
 
 def phred_letter_to_number(x):
+    """
+    Turn a PHRED score from letter to number - I keep forgetting, so function.
+    """
     return ord(x)-33
 
 
 def phred_number_to_letter(x):
+    """
+    Turn a PHRED score from number to letter - I keep forgetting, so function.
+    """
     return chr(x+33)
 
 
 def phred_number_array_to_joined_string(x):
+    """
+    Turn a list of PHRED score numbers to a letter string.
+    """
     return str("".join([ phred_number_to_letter(i) for i in x]))
 
 
 def read_sam_file(fh):
     """
     This is a minimal reader, just for getting the fields I like and emiting
-    SeqRecord objects, sort of like SeqIO. Putting SAM tags in description.
+    SeqRecord objects, sort of like BioPython SeqIO. Putting SAM tags in 
+    description field, so it should be possible to pass those through.
     """
     for i in fh.readlines():
         fields = i.rstrip('\n').split('\t')
@@ -66,27 +71,20 @@ def read_sam_file(fh):
 
 def read_txt_file(fh):
     """
-    This just treats one sequence per line as a SeqRecord.
+    This just yields one sequence per line as a SeqRecord.
     """
     for i in fh.readlines():
         seq = i.rstrip()
         yield SeqRecord.SeqRecord( Seq.Seq(seq), id=seq, description="")
 
 
-def fix_desc(seq_record):
-    """
-    According to https://github.com/biopython/biopython/issues/398 ,
-    BioPython mimics an old weird behavior by outputting the ID in the
-    description field. There's a fix for the FASTA writer, but not the
-    FASTQ ... so here we munge that by removing the ID from the description.
-
-    ... except that I don't know where to put this.
-    """
-    seq_record.description = re.sub(str(seq_record.id),"",seq_record.description)
-    return seq_record
-
-
+# TODO consider moving the 'which' bit to something specified in the 
+# build_context, sort of like 'id' and 'description'
 def write_out_seq(seq,fh,format,which):
+    """
+    This little utility just handles which of the four formats to print out,
+    and for SAM appends a tag with which match this is. Using IE tag.
+    """
     if format == "sam":
         print( format_sam_record( seq.id, str(seq.seq),
                 phred_number_array_to_joined_string(seq.letter_annotations['phred_quality']),
@@ -97,9 +95,6 @@ def write_out_seq(seq,fh,format,which):
         print( str(seq.seq), file=fh)
     else:
         SeqIO.write(seq, fh, format) 
-
-
-
 
 
 class Configuration:
@@ -530,8 +525,6 @@ class Configuration:
         handling the I/O. 
         """
     
-        ### Open up file handles
-    
         # Input
         self.get_input_seqs()
     
@@ -560,7 +553,6 @@ class Configuration:
         self.close_fhs()
     
         return(0)
-
 
 
 class MatchScores:
@@ -822,7 +814,3 @@ class SeqHolder:
             elif self.configuration.failed_fh != None:
                 write_out_seq(self.seqs['input'], self.configuration.failed_fh, self.configuration.input_format, 
                     output_record['name'])
-
-
-
-
