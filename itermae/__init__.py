@@ -202,7 +202,7 @@ class Configuration:
         """
         This is just to check that the name is not one of these, if so, error out.
         - 'dummyspacer' is so you can pop an X into your sequence as a separator
-            delimiter for later processing
+        delimiter for later processing
         - 'input' is the input group, the original one
         - 'id' is the input ID, here just as 'id' so it's easy to find
         - 'description' is for mapping over the FASTQ description
