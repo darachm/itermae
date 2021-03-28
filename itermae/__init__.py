@@ -8,8 +8,6 @@ import string
 import argparse
 import re
 import itertools
-import copy
-import io
 
 import yaml
 import regex
