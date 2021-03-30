@@ -134,10 +134,9 @@ class Configuration:
     def open_input_fh(self):
         if self.input.upper() == 'STDIN':
             if self.gzipped:
-                print("I can't handle gzipped inputs on STDIN ! "+
-                    "You shouldn't see this error, it shoulda been caught in "+
-                    "the launcher script.",file=sys.stderr) 
-                raise
+                raise ValueError("I can't handle gzipped inputs on STDIN ! "
+                    "You shouldn't see this error, it shoulda been caught in "
+                    "the launcher script.") 
             else:
                 self.input_fh = sys.stdin
         else:
@@ -208,11 +207,9 @@ class Configuration:
         - 'description' is for mapping over the FASTQ description
         """
         if name in reserved_names:
-            print("Hey, you can't name a capture group "+
+            raise ValueError("Hey, you can't name a capture group "+
                 (" or ".join(reserved_names[ [(i == name) for i in reserved_names]]))+
-                ", I'm using that/those! Pick a different name.",
-                file=sys.stderr)
-            raise
+                ", I'm using that/those! Pick a different name.")
 
     def config_from_file(self,file_path):
         """
@@ -227,10 +224,9 @@ class Configuration:
         try:
             with open(file_path,'r') as f:
                 config = yaml.load(f,Loader=yaml.SafeLoader)
-        except:
-            print('I failed to parse the supplied YAML file path name.',
-                file=sys.stderr)
-            raise
+        except Exception as error:
+            raise ValueError(repr(error)+" : "
+                "I failed to parse the supplied YAML file at that path.")
 
         # Looking for verbosity instruction global, if not global, then in 'outputs'
         try:
@@ -275,20 +271,23 @@ class Configuration:
                 each['use']
             except:
                 each['use'] = 'input'
+            try:
+                assert each['pattern']
+            except Exception as error:
+                raise KeyError("You need to define a group called 'pattern:' "
+                    "inside each of the list (denoted by '-'s) inside of "
+                    "'matches:' - what is the sequence pattern to match?")
             if self.verbosity >= 1:
                 print("    Taking '"+each['use']+"'. \n", end="",file=sys.stderr)
             if len(re.sub(r'(.)\1+',r'\1',each['marking'])) > len(set(each['marking'])):
-                print("Error in reading yaml config! "+
-                    "It looks like you've repeated a group marking "+
-                    "character to match in multiple places. I do not support "+
-                    "that, use a different character.",file=sys.stderr)
-                raise
+                raise ValueError("Error in reading yaml config! It looks like "
+                    "you've repeated a group marking character to match in "
+                    "multiple places. I do not support that, "
+                    "use a different character.")
             if len(each['pattern']) != len(each['marking']):
-                print("Error in reading yaml config! "+
-                    "The pattern and marking you've defined are of "+
-                    "different lengths. I need them to be the same length.",
-                    file=sys.stderr)
-                raise
+                raise ValueError("Error in reading yaml config! "
+                    "The pattern and marking you've defined are of "
+                    "different lengths. I need them to be the same length.")
             pattern_groups = dict()
             group_order = list() # This is to keep track of the order in which
                 # the groups are being defined in the paired lines
@@ -302,6 +301,13 @@ class Configuration:
 
             regex_string = '' # building this now
             for mark in group_order:
+
+                try:
+                    assert each['marked_groups'][mark]
+                except Exception as error:
+                    raise KeyError("You've marked a group in the 'marking:' "
+                        "field but have not supplied a corresponding entry in "
+                        "'marked_groups:', hence "+repr(error)+".")
 
                 if 'name' in each['marked_groups'][mark].keys():
                     self.check_reserved_name(each['marked_groups'][mark]['name'])
@@ -413,19 +419,25 @@ class Configuration:
                     "of '"+each['description']+"' ('description' is input "+
                     "description').",file=sys.stderr)
 
-            self.outputs_array.append( {
-                    'name':each['name'],
-                    'filter':[ each['filter'],
-                        compile(each['filter'],'<string>','eval',optimize=2) ],
-                    'id':[ each['id'], 
-                        compile(each['id'],'<string>','eval',optimize=2) ],
-                    'seq':[ each['seq'],
-                        compile(each['seq'],'<string>','eval',optimize=2) ],
-                    'description':[ each['description'],
-                        compile(each['description'],'<string>','eval',optimize=2) ]
-                })
+            try:
+                self.outputs_array.append( {
+                        'name':each['name'], # These are on oneline for error
+                            # readability about which one is the problem
+                        'filter':[ each['filter'], compile(each['filter'],'<string>','eval',optimize=2) ],
+                        'id':[ each['id'], compile(each['id'],'<string>','eval',optimize=2) ],
+                        'seq':[ each['seq'], compile(each['seq'],'<string>','eval',optimize=2) ],
+                        'description':[ each['description'], compile(each['description'],'<string>','eval',optimize=2) ]
+                    })
+            except Exception as error:
+                raise ValueError(repr(error)+" : "
+                    "Either the supplied 'filter', 'id', 'seq', "
+                    "or 'description' expression for a match group does "
+                    "not look like a python expression - are all "
+                    "non-group-name parts in quotes? Are group-names and "
+                    "other parts connected with + signs?")
 
     def config_from_args(self,args_copy):
+
         """
         Make configuration object from arguments provided. Should be the same as 
         the config_from_yaml output, if supplied the same.
@@ -448,10 +460,10 @@ class Configuration:
                     regex.BESTMATCH # And we use the BESTMATCH strategy, I think
                     )
                 self.matches_array.append( {'input':input_string.strip(), 'regex':compiled_regex} )
-            except:
-                print("I failed to build matches array from the arguments supplied.",
-                    file=sys.stderr)
-                raise
+            except Exception as error:
+                raise ValueError(repr(error)+" : "
+                    "I failed to build the regular expression from the "
+                    "command-line argument supplied.")
 
         # Adding in defaults for outputs. Can't do that with argparse, I think,
         # because this needs to be appending
@@ -478,28 +490,30 @@ class Configuration:
                 args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
             if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
                     len(args_copy.output_filter) == len(args_copy.output_description) ):
-                print("The output IDs, seqs, descriptions, and filters are of unequal "+
-                    "sizes. Make them equal, or only define one each and it will be "+
-                    "reused across all.",file=sys.stderr)
-                raise
+                raise ValueError("The output IDs, seqs, descriptions, and "
+                    "filters are of unequal sizes. Make them equal, or only "
+                    "define one each and it will be reused across all.")
     
-            try:
-                i = 0
-                for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
-                    this_name = 'output_'+str(i)
-                    i += 1
+            i = 0
+            for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
+                this_name = 'output_'+str(i)
+                i += 1
+                try:
                     self.outputs_array.append( {   
                             'name': this_name,
-                            'filter': [ filterz,
-                                compile(filterz,'<string>','eval',optimize=2) ],
+                            'filter': [ filterz, compile(filterz,'<string>','eval',optimize=2) ],
                             'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
                             'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
                             'description':[ description, compile(description,'<string>','eval',optimize=2) ]
                         })
-            except:
-                print("I failed to build outputs array from the arguments supplied.",
-                    file=sys.stderr)
-                raise
+                except Exception as error:
+                    raise ValueError(repr(error)+" : "
+                        "Either the supplied 'filter', 'id', 'seq', "
+                        "or 'description' expression for a match group does "
+                        "not look like a python expression - are all "
+                        "non-group-name parts in quotes? Are group-names and "
+                        "other parts connected with + signs?")
+                        
         
         # Passing through the rest, defaults should be set in argparse defs
         if args_copy.input is not None:
