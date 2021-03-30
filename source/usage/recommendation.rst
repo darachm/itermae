@@ -664,18 +664,19 @@ And now we can slot in the ``itermae`` call, here using that config from before.
 
 6. Run on the whole file
 -------------------------------
-        
-Next we can compare a run on the whole file to see how long it takes. 
-Here I've put ``time`` in front to get the time it takes to run in each way, 
-and I am using ``> /dev/null`` to block ``itermae`` outputs.
+
+Then, just run it on your entire file and save the results.
+Here, ``-v`` is useful for run-level configuration and messages:
 
 .. jupyter-execute::
     :stderr:
     :raises:
 
-    cat itermae/data/barseq.fastq | time itermae --config test_config.yml \
-        > /dev/null 
- 
-    cat itermae/data/barseq.fastq | time parallel --pipe -l 4 --keep-order \
-            -N 100 itermae --config test_config.yml \
-        > /dev/null 
+    cat itermae/data/barseq.fastq \
+        | parallel --pipe -l 4 --keep-order -N 1000 \
+            itermae --config test_config.yml -v \
+        > chopped_outputs.sam
+    wc -l chopped_outputs.sam
+
+Of the 1000 input records, in 724 we find out matches and can form the 
+desired outputs.
