@@ -1,4 +1,4 @@
-Recommended procedure
+Tutorial, demo
 ===================================
 
 This tool is a bit complex to use, so we make recommendations here for how to

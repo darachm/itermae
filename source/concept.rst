@@ -43,8 +43,8 @@ or with a
 refer to those pages for details.
 
 To begin using, we've outlined a
-:doc:`recommended procedure <usage/recommendation>`
-for testing configurations.
+:doc:`tutorial/demo/recommended-procedure <usage/recommendation>`
+for testing and using configurations.
 See :doc:`examples <usage/examples>` for more ideas.
 
 :doc:`Contribution/development <development>` information is available with

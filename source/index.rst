@@ -1,9 +1,6 @@
-itermae docs
-===============================================================
-
 ``itermae`` is a command-line utility for recognizing and parsing patterns 
 from sequences, intended for processing sequenced amplicons from methods such as
-bar-seq, DMS, and scRNAseq.
+barseq, DMS, and scRNAseq.
 
 .. toctree::
     :maxdepth: 2
