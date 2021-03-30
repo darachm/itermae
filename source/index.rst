@@ -2,10 +2,8 @@ itermae docs
 ===============================================================
 
 ``itermae`` is a command-line utility for recognizing and parsing patterns 
-from sequences. It's designed for handling Illumina short-read FASTQ files, 
-but can work on FASTQ/SAM files from PacBio or FASTA or one-sequence-per-line
-text files.
-
+from sequences, intended for processing sequenced amplicons from methods such as
+bar-seq, DMS, and scRNAseq.
 
 .. toctree::
     :maxdepth: 2
@@ -13,7 +11,7 @@ text files.
 
     concept
     install
-    usage/recommendation
+    usage/tutorial
     usage/config
     usage/examples
     package
