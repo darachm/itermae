@@ -8,12 +8,16 @@ The examples are run using using
 so should be reproducible for you if you install ``itermae`` 
 and run them from inside the package repo.
 
+
+GACNGNANGNGNGNGATGTG
+
 .. jupyter-kernel:: bash
     :id: bashy
 
 Boring minimal example
 -------------------------
 
+This just reads in the first two records and outputs them again.
 
 .. jupyter-execute::
     :stderr:
