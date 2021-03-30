@@ -218,7 +218,7 @@ class Configuration:
         Pass in the file path as an argument.
         """
 
-        if file_path == False:
+        if file_path is None:
             return
     
         try:
@@ -472,11 +472,11 @@ class Configuration:
             len(args_copy.output_description)] )
 
         if maximum_number_of_outputs:
-            if args_copy.output_id is []:
+            if len(args_copy.output_id) == 0:
                 args_copy.output_id = ['id']
-            if args_copy.output_filter is []:
+            if len(args_copy.output_filter) == 0:
                 args_copy.output_filter = ['True']
-            if args_copy.output_description is []:
+            if len(args_copy.output_description) == 0:
                 args_copy.output_description = ['description']
 
             # Normalizing all singletons to same length
@@ -492,7 +492,9 @@ class Configuration:
                     len(args_copy.output_filter) == len(args_copy.output_description) ):
                 raise ValueError("The output IDs, seqs, descriptions, and "
                     "filters are of unequal sizes. Make them equal, or only "
-                    "define one each and it will be reused across all.")
+                    "define one each and it will be reused across all."+
+                    repr(( len(args_copy.output_id), len(args_copy.output_seq),
+                        len(args_copy.output_filter), len(args_copy.output_description) )) )
     
             i = 0
             for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
