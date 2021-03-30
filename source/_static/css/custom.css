@@ -1,10 +1,20 @@
 @import '../alabaster.css'; 
 
-.jupyter_cell .output pre {
-    line-height: 0.7em;
+.jupyter_cell div.output pre {
+    line-height: 1.2em;
     font-size: 0.7em;
+    padding-bottom: 1px;
+/*
     overflow: visible;
     overflow-y: visible;
+*/
+/* https://www.w3docs.com/snippets/css/how-to-wrap-text-in-a-pre-tag-with-css.html */
+    overflow-x: auto;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -o-pre-wrap;
+    white-space: -pre-wrap;
+    word-wrap: break-word;
 }
 
 
