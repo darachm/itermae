@@ -627,6 +627,7 @@ instructions from the 20210322 release::
 Then start by just getting familiar with running your sequences into 
 ``parallel``. I recommend using these settings:
 
+* ``--quote`` protects any funny regex characters from being interpreted as BASH
 * ``--pipe`` pipes the input into each process as STDIN
 * ``-l 4`` denotes each record is 4 lines - change this for FASTA, SAM, etc
 * ``--keep-order`` maintains the order of input/output 
@@ -647,7 +648,8 @@ Try it out with ``cat``-ing one record out per job.
     echo "=========="
     echo "To"
     echo "=========="
-    head -n 16 test_set.fastq | parallel --pipe -l 4 --keep-order -N 1 cat
+    head -n 16 test_set.fastq \
+        | parallel --quote --pipe -l 4 --keep-order -N 1 cat
 
 If you run it multiple times without ``--keep-order``, the order should change.
 But for bioinformatics you may not want that.
@@ -658,7 +660,7 @@ And now we can slot in the ``itermae`` call, here using that config from before.
     :stderr:
     :raises:
  
-    cat test_set.fastq | parallel --pipe -l 4 --keep-order \
+    cat test_set.fastq | parallel --quote --pipe -l 4 --keep-order \
             -N 100 itermae --config test_config.yml \
         | head -n 10
 
@@ -673,7 +675,7 @@ Here, ``-v`` is useful for run-level configuration and messages:
     :raises:
 
     cat itermae/data/barseq.fastq \
-        | parallel --pipe -l 4 --keep-order -N 1000 \
+        | parallel --quote --pipe -l 4 --keep-order -N 1000 \
             itermae --config test_config.yml -v \
         > chopped_outputs.sam
     wc -l chopped_outputs.sam
