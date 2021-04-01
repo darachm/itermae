@@ -1,4 +1,4 @@
-Concept and overview
+Concept
 ========================
 
 This tool is designed to robustly parse DNA amplicon-sequencing from designs 
@@ -30,7 +30,19 @@ re-arranged for downstream use, all using fuzzy regular expressions:
 
 .. image:: /img/parse_diagram_1.svg
 
-There are three main groups of options to configure:
+In this example, the program is configured to (for each sequence):
+
+* Identify the priming site and use this to extract the first five bases as
+  a sample-multiplexing sequence.
+* Identify the sequence expected just before and after the strain barcode and
+  use this to extract the strain barcode.
+* Identify the interspersed UMI pattern in the tail of the molecule and use
+  this to extract the UMI.
+* Construct a sequence record of the strain barcode (and quality scores), with
+  the UMI and sample-multiplexing sequence appended to the read ID.
+
+In doing this work, 
+there are three main groups of options to configure:
 
 * Input/Output : what formats to read and write, and where from/to
 * Matches : what matches to apply, to what groups to save, and how error-tolerant to be
@@ -43,7 +55,7 @@ or with a
 refer to those pages for details.
 
 To begin using, we've outlined a
-:doc:`tutorial/demo/recommended-procedure <usage/recommendation>`
+:doc:`tutorial/demo/recommended-procedure <usage/tutorial>`
 for testing and using configurations.
 See :doc:`examples <usage/examples>` for more ideas.
 
