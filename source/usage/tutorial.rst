@@ -1,11 +1,15 @@
-Tutorial, demo
+Tutorial / demos
 ===================================
 
-This tool is a bit complex to use, so we make recommendations here for how to
+Here we make recommendations here for how to
 effectively test and iteratively tune the tool for your application.
 We assume you are probably trying to parse sequence patterns (like barcodes,
 sample indicies, tags, UMIs, variant loci) out of many Illumina short-reads,
 but a similar procedure should work for other goals and file formats.
+
+The below focuses on using the YAML config file.
+For quick examples of using command-line arguments, 
+see :doc:`examples`.
 
 The below code snippets are being run from inside the ``itermae`` repo 
 directory, as bash commands.
@@ -22,15 +26,16 @@ This style is slightly unconventional, but I find it to be clearer.
 
     singularity exec shub://darachm/itermae:latest itermae
 
-in the below examples.
+in the below examples. This is especially useful when using ``parallel`` below,
+as that is included in the ``itermae`` container.
 
 2. Work on a representative subset
 --------------------------------------
 
 Generate a representative subset of your sequences to work on. 
 I'd recommend no fewer than 100, so that you see common errors. 
-You should avoid taking the very first sequences, as those tend to be a bit
-erroneous.
+You should avoid taking the very first sequences of a real Illumina FASTQ file, 
+as those tend to be a bit erroneous.
 
 .. jupyter-execute::
     :stderr:
@@ -67,16 +72,21 @@ There's three sections to write, as detailed in
 Note that ``input`` is optional, and if omitted we will assume you are 
 pipe-ing (with ``|``) a FASTQ file in, so something like ::
 
+    cat yourFile.fastq | itermae --config test_config.yml > output.sam
+
+or for a gzip'd FASTQ (FASTQZ) file::
+
     zcat yourFile.fastqz | itermae --config test_config.yml > output.sam
 
-If you do specify an ``input`` block, you can specify what format the reads
-are in and if they are gzipped - like so::
+If you do specify an ``input`` block in the YAML config file, 
+you can specify what format the reads are in and if they are gzipped - like so::
 
     input:
         format: some_gzipped_fastq_file.fastqz
         gzipped: true
 
-For ``matches``, each match is indented with a ``-``. 
+Then for the ``matches`` section, each match is indented with a ``-``
+to denote that it is an item in a list. 
 You specify what sequence you're using with the ``use:`` key, which is by
 default ``input`` (the input sequence). So start with::
 
@@ -87,7 +97,8 @@ I recommend you then paste in the sequence of what you expect
 your library to look like, then write under it what group each sequence is
 part of for your first match. Put in front of these keys 
 ``pattern:`` and ``marking:`` (picked so that it's the same length as 
-``pattern``). For example::
+``pattern``). Note that they need to be indented from the ``-`` a little.
+For example::
 
     matches:
         - use: input
@@ -100,9 +111,12 @@ Here,
 ``c`` is a ~20 base barcode,
 and ``D`` is other fixed sequence.
 
-Then below that you want to specify what each of these groups is called,
-and any rules about the matching. You can specify the ``name:`` and how long
-the letter ``repeat:``'s for or (``repeat_min:`` and ``repeat_max:``).
+Then below that you want to specify in a section called ``marked_groups:``
+what each of these groups is called,
+and any rules about the matching. 
+Note that this is indented in from the previous section.
+You can specify the ``name:`` and how long
+the pattern ``repeat:``'s for or (``repeat_min:`` and ``repeat_max:``).
 You can specify error tolerance by specifying how many of any kind of errors 
 are allowed (``allowed_errors:``) or particular types of errors 
 (``allowed_insertions:``, ``allowed_substitutions:``, ``allowed_deletions:``).
@@ -135,15 +149,15 @@ for as long as you specify (using ``repeat:`` and the like).
 If it's multiple characters (like ``GN``), it will
 repeat the whole pattern (like ``GNGNGNGNGN`` if ``repeat: 5``).
 
-For ``output:``, you can specify where to go with ``to:`` and what format with
-``format:``. Default ``to:`` is standard output.
-Here we'll write it to some FASTQ file::
+For ``output:``, you can specify a file path to write to with ``to:`` 
+(or just leave it on the default of standard output) and what format with
+``format:``.  Here we'll write it to some FASTQ file path::
 
     output:
-        to: some_output_file.fastQ
+        to: some_output_file.fastq
         format: FASTQ
 
-Below we'll output FASTA to standard output, to demo.
+Below we'll output FASTA to standard output, to demonstrate.
 
 Then we specify a ``list:`` of the different outputs to generate. Here we will
 write a first record that is named 'barcode'. It will use the same 'id' field
@@ -155,15 +169,20 @@ and the sequence will just be the 'barcode' matched above::
         list: 
             -   name: 'barcode'
                 id: 'input'
-                description: '\"barcode=\"+barcode'
+                description: 'description+" sample="+sampleIndex'
                 seq: 'barcode' 
 
 Note that for modifying the ``id:``, ``description:``, or ``seq:``, you've got
-to put any plain text in quotes (``"barcode="`` above) and append (``+``) it
-to the group sequences you want to append (like ``+barcode``).
+to put any plain text in quotes (``" sample="`` above) and append (``+``) it
+to the group sequences you want to append (like ``+sampleIndex``). 
+``description`` contains the original description, so the above is appending 
+``" sample="+sampleIndex``
+on to that.
 
-Finally, you can set ``verbosity:`` to one of several levels. You can also
-set verbosity with the command line argument ``-v``. Command-line directives
+Finally, you can set ``verbosity:`` to one of several levels. 
+Rather, I would recommend that you use the command line argument ``-v``,
+as this is more readable and changeable in debugging. 
+Command-line directives
 are added in after the YAML configuration file is read.
 
 We'll save the total configuration to a file ``test_config.yml``.
@@ -198,7 +217,7 @@ We'll save the total configuration to a file ``test_config.yml``.
         list:
             -   name: 'barcode'
                 id: 'id'
-                description: '\"sample=\"+sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode'
     " > test_config.yml
 
@@ -210,7 +229,7 @@ We'll save the total configuration to a file ``test_config.yml``.
     cat test_config.yml
 
 Now we run that, without any verbosity (no ``-v`` on the command-line or 
-``verbosity: 1`` in the YAML). 
+``verbosity:`` in the YAML). 
 What do we get? Here we just look at the head of the results.
 
 .. jupyter-execute::
@@ -227,8 +246,9 @@ Well this is nice that it works, but it would sure be more useful if I showed
 you some errors. Here, I'm going to put some errors in the YAML config, and
 show you how to see and fix these.
 
-If I know about the error, I have tried to raise a descriptive exception that
-explains what to do. If that doesn't make sense then 
+If I know about the type of error, 
+I have tried to raise a descriptive exception that
+explains what to do. If that doesn't make sense then please
 `raise an issue at the GitLab repo <https://gitlab.com/darachm/itermae/-/issues>`_.
 
 I am running the below with verbosity set on three by putting ``-vvv`` at the
@@ -266,7 +286,7 @@ Error in the YAML keys
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: 'sample=sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode sample'
     " > test_config.yml
  
@@ -311,7 +331,7 @@ Recycling markings
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: 'sample=sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode sample'
     " > test_config.yml
  
@@ -364,7 +384,7 @@ Missing the ``marked_groups:`` entry for a group
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: 'sample=sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode sample'
     " > test_config.yml
  
@@ -408,7 +428,7 @@ Error in syntax of defining output description
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: 'sample=sampleIndex'
+                description: 'description+sample=+sampleIndex'
                 seq: 'barcode_sample'
     " > test_config.yml
  
@@ -420,14 +440,15 @@ Error in syntax of defining output description
 
 This line::
 
-    description: 'sample=sampleIndex'
+    description: 'description+sample=sampleIndex'
 
 should be::
 
-    description: '"sample="+sampleIndex'
+    description: 'description+" sample="+sampleIndex'
 
-Because the ``sample=`` part is just text pasted on front of the 'sampleIndex'
-matched group. Used ``+`` to paste groups and/or text together!
+Because the ``sample=`` part is just text pasted inbetween the 'description'
+and the 'sampleIndex' matched group. 
+Use ``+`` to paste groups and/or quoted text together!
 
 Error in syntax of defining output description
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -461,7 +482,7 @@ Error in syntax of defining output description
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: '\"sample=\"+sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode_sample'
     " > test_config.yml
  
@@ -514,7 +535,7 @@ On this one I will hide the verbosity to show the output:
         list:
             -   name: 'barcode'
                 id: 'input'
-                description: '\"sample=\"+sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode+sampleIndex'
     " > test_config.yml
  
@@ -564,7 +585,7 @@ Here we stick the 'sampleIndex' onto the ID in SAM.
         list:
             -   name: 'barcode'
                 id: 'id+\"_sample=\"+sampleIndex'
-                description: '\"sample=\"+sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
                 seq: 'barcode'
     " > test_config.yml
  
@@ -574,16 +595,6 @@ Here we stick the 'sampleIndex' onto the ID in SAM.
  
     head -n 8 test_set.fastq | itermae --config test_config.yml 
 
-That is set by this config
-
-
-.. jupyter-execute::
-    :stderr:
-    :raises:
-    :hide-code:
- 
-    cat test_config.yml 
-
 So: 
 
 * generally error messages should be informative, and if not please submit
@@ -592,7 +603,104 @@ So:
   matching or output not forming. Run with maximal verbosity ``-vvv``, then
   you can compare the outputs and see how far it gets, and where it fails.
 
-5. Parallel-ing with parallel
+
+5. Filtering
+-------------------------------
+
+You may very well want to filter the reads on a variety of properties.
+You do this by adding a ``filter:`` to an output in the output list that
+will output that sequence if it passes the filter. Such as::
+
+    output:
+        format: fasta
+        list:
+            -   name: 'barcode'
+                id: 'input'
+                description: 'description+\" sample=\"+sampleIndex'
+                seq: 'barcode+sampleIndex'
+                filter: 'barcode.length >= 20'
+
+The filter is evaluated as python, so you can use things like ``>=`` or
+``and`` or ``or`` to combine multiple statements in the filter.
+There are several of such properties available internally per matched group, 
+such as:
+
+* ``some_group.start`` - specifies where in the read ``some_group`` starts
+* ``some_group.end`` - specifies where in the read ``some_group`` ends
+* ``some_group.length`` - specifies the length of ``some_group``
+* ``some_group.quality`` - stores a numeric array of the PHRED qualities 
+    associated with the sequence in ``some_group``
+
+For that last one especially, the module ``statistics`` is loaded so that you
+may make use of expressions such as 
+``statistics.median(some_group.quality) >= 30``. 
+See the `statistics <https://docs.python.org/3/library/statistics.html>`_ module
+for more functions, like 
+``statistics.mean(some_group.quality) >= 30`` or 
+``statistics.geometric_mean(some_group.quality) >= 30``.
+
+There are match-level properties too. Each match is named ``match_0`` or
+``match_1`` etc in the order that it is specified (in YAML or command line),
+so these properties can also be used in a filter:
+
+* ``some_match.substitutions`` - stores how many substitutions were necessary 
+  for a match
+* ``some_match.insertions`` - stores how many insertions were necessary 
+  for a match
+* ``some_match.deletions`` - stores how many deletions were necessary 
+  for a match
+
+I do not anticipate these to be readily useful, but they are available in case
+you envision some useful edge case, like 
+``( statistics.mean(some_group.quality) >= 30 and match_0.substitions == 0 ) or ( statistics.mean(some_group.quality) <= 30 and match_0.substitions >= 0) )`` 
+... it's there if you need it.
+
+Adding that into the previous configuration, here the file we have built up:
+
+.. jupyter-execute::
+    :stderr:
+    :raises:
+    :hide-code:
+    :hide-output:
+ 
+    echo "matches:
+        - use: input
+          pattern: NNNNNGTCCTCGAGGTCTCTNNNNNNNNNNNNNNNNNNNNCGTACGCTGCAGGTC
+          marking: aaaaaBBBBBBBBBBBBBBBccccccccccccccccccccDDDDDDDDDDDDDDD
+          marked_groups:
+              a:
+                  name: sampleIndex
+                  repeat: 5
+              B:
+                  name: prefix
+                  allowed_errors: 2
+              c:
+                  name: barcode
+                  repeat_min: 18
+                  repeat_max: 22
+              D:
+                  allowed_insertions: 1
+                  allowed_deletions: 2
+                  allowed_substititions: 2
+    output:
+        format: sam
+        list:
+            -   name: 'barcode'
+                id: 'id+\"_sample=\"+sampleIndex'
+                description: 'description+\" sample=\"+sampleIndex'
+                seq: 'barcode'
+                filter: 'statistics.mean(barcode.quality) >= 30'
+    " > test_config.yml
+ 
+.. jupyter-execute::
+    :stderr:
+    :raises:
+    :hide-code:
+ 
+    cat test_config.yml 
+
+
+6. Parallel-ing with parallel
 -------------------------------
 
 I recommend you start by debugging on a small file interactively with a single
@@ -654,7 +762,8 @@ Try it out with ``cat``-ing one record out per job.
 If you run it multiple times without ``--keep-order``, the order should change.
 But for bioinformatics you may not want that.
 
-And now we can slot in the ``itermae`` call, here using that config from before.
+And now we can slot in the ``itermae`` call, here using that config from before,
+and restricting it to just the first ten outputs:
 
 .. jupyter-execute::
     :stderr:
@@ -664,7 +773,7 @@ And now we can slot in the ``itermae`` call, here using that config from before.
             -N 100 itermae --config test_config.yml \
         | head -n 10
 
-6. Run on the whole file
+7. Run on the whole file
 -------------------------------
 
 Then, just run it on your entire file and save the results.
@@ -673,12 +782,18 @@ Here, ``-v`` is useful for run-level configuration and messages:
 .. jupyter-execute::
     :stderr:
     :raises:
-
+ 
     cat itermae/data/barseq.fastq \
         | parallel --quote --pipe -l 4 --keep-order -N 1000 \
             itermae --config test_config.yml -v \
         > chopped_outputs.sam
-    wc -l chopped_outputs.sam
 
-Of the 1000 input records, in 724 we find out matches and can form the 
-desired outputs.
+
+Of the 1000 input records, we find this many that have matches and can form
+the desired outputs:
+
+.. jupyter-execute::
+    :stderr:
+    :raises:
+ 
+    wc -l chopped_outputs.sam

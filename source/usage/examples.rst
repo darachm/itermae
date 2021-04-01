@@ -9,11 +9,13 @@ so should be reproducible for you if you install ``itermae``
 and run each one or all of them (with ``make docs``) 
 from inside the package repo.
 
-All the below examples are using the `command-line configuration <cli-config>`_.
+All the below examples are using the 
+:ref:`command-line configuration <cli-config>`.
 This requires some familiarity with regular expressions, and the ``regex``
 module syntax for error tolerance (fuzziness).
-In the future, I hope to also write a `YAML config file <yaml-config>`_ 
-for each.
+In the future, I hope to also write a 
+:ref:`YAML config file <yaml-config>` 
+for each, but for now the :doc:`tutorial` focuses on that.
 
 If you encounter any errors, turn on verbose modes with ``-v`` up to ``-vvv``.
 
