@@ -26,9 +26,12 @@ clean: ## Cleanup the demo outputs
 pkg-files=setup.py bin/itermae itermae/__init__.py
 
 install: dist-files ## Reinstall from this locally assembled package
+	python3 -m pip install dist/*.whl --force-reinstall
+
+test-install: dist-files ## Reinstall from this locally assembled package
 	python3 -m pip install dist/*.whl --force-reinstall --no-deps
 
-test: install ## Reinstall and run pytest
+test: test-install ## Reinstall and run pytest
 	pytest
 
 just-test: ## Just run pytest to test the tests
