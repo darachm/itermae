@@ -436,6 +436,17 @@ class Configuration:
                     "non-group-name parts in quotes? Are group-names and "
                     "other parts connected with + signs?")
 
+
+        try:
+            self.failed = config['output']['failed']
+        except:
+            pass
+        try:
+            self.report = config['output']['report']
+        except:
+            pass
+
+
     def config_from_args(self,args_copy):
 
         """
@@ -545,14 +556,14 @@ class Configuration:
             '\n    with verbosity set at: '+str(self.verbosity)+
             '\n    doing these matches:')
         for each in self.matches_array:
-            return_string += '\n        input: '+each['input']
-            return_string += '\n        regex: '+str(each['regex'])
+            return_string += '\n        - input: '+each['input']
+            return_string += '\n          regex: '+str(each['regex'])
         return_string += '\n    writing these outputs:'
         for each in self.outputs_array:
-            return_string += '\n        id: '+str(each['id'][0])
-            return_string += '\n        description: '+str(each['description'][0])
-            return_string += '\n        seq: '+str(each['seq'][0])
-            return_string += '\n        filter: '+str(each['filter'][0])
+            return_string += '\n        - id: '+str(each['id'][0])
+            return_string += '\n          description: '+str(each['description'][0])
+            return_string += '\n          seq: '+str(each['seq'][0])
+            return_string += '\n          filter: '+str(each['filter'][0])
         return return_string
 
     def reader(self):
@@ -725,6 +736,10 @@ class SeqHolder:
         """
 
         try:
+            if self.configuration.verbosity >= 3:
+                print("\n["+str(time.time())+"] : This read "+
+                    self.seqs['input'].id+" successfully evaluated the filter "+
+                    str(output_dict['filter'][0]),file=sys.stderr)
             return eval(output_dict['filter'][1],globals(),self.context_filter)
         except:
             if self.configuration.verbosity >= 3:
@@ -739,16 +754,26 @@ class SeqHolder:
         """
 
         try:
-            out_seq = SeqRecord.SeqRecord(Seq.Seq(""))
-            out_seq = eval(output_dict['seq'][1],globals(),self.context_seq)
-            out_seq.id = str(eval(output_dict['id'][1],globals(),self.context_id))
-            out_seq.description = str(eval(output_dict['description'][1],globals(),self.context_id))
+            output_seq = eval(output_dict['seq'][1],globals(),self.context_seq)
+            out_seq = SeqRecord.SeqRecord(
+                seq = Seq.Seq(str(output_seq.seq)) ,
+                id = str(eval(output_dict['id'][1],globals(),self.context_id)) ,
+                description = str(eval(output_dict['description'][1],globals(),self.context_id)) ,
+                letter_annotations = {'phred_quality':output_seq.letter_annotations['phred_quality']}
+            )
+            if self.configuration.verbosity >= 3:
+                print("\n["+str(time.time())+"] : This read "+
+                    self.seqs['input'].id+" successfully built the output of "+
+                    "id: '"+str(output_dict['id'][0])+"', and "+
+                    "description: '"+str(output_dict['description'][0])+"', and "+
+                    "seq: '"+str(output_dict['seq'][0])+"'." ,file=sys.stderr)
             return out_seq
         except:
             if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to build the output of "+
                     "id: '"+str(output_dict['id'][0])+"', and "+
+                    "description: '"+str(output_dict['description'][0])+"', and "+
                     "seq: '"+str(output_dict['seq'][0])+"'." ,file=sys.stderr)
             return None
 
