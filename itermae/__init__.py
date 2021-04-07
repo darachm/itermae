@@ -14,6 +14,17 @@ import regex
 from Bio import SeqIO
 from Bio import Seq, SeqRecord
 
+# Template for sphinx docstring, from https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html
+#    """[Summary]
+#    
+#    :param [ParamName]: [ParamDescription], defaults to [DefaultParamVal]
+#    :type [ParamName]: [ParamType](, optional)
+#    ...
+#    :raises [ErrorType]: [ErrorDescription]
+#    ...
+#    :return: [ReturnDescription]
+#    :rtype: [ReturnType]
+#    """
 
 # TODO pass description to flags field, but this requires lots of warnings
 # and caveats to the users that they will have to preface the right SAM tag
@@ -22,34 +33,81 @@ def format_sam_record(record_id, sequence, qualities, tags,
         flag='0', reference_name='*', mapping_position='0', 
         mapping_quality='255', cigar_string='*', reference_name_of_mate='=', 
         position_of_mate='0', template_length='0' ):
+    """This formats arguments into a string for outputting as a SAM format
+    record. This is missing the ability to handle descriptions or tags other
+    than the one indicating which group this is.
+
+    :param record_id: the ID of the read
+    :type record_id: str
+    :param sequence: the nucleotide sequence to output
+    :type sequence: str
+    :param qualities: per-base qualities, encoded as letters (ASCII I think)
+    :type qualities: str
+    :param tags: any tags to add to the tags field, see SAM specification for
+        the proper format of these, defaults to blank
+    :type tags: str, optional
+    :param flag: the bit-flag, defaults to '0'
+    :type flag: str, optional
+    :param reference_name: name of reference template, defaults to '*'
+    :type reference_name: str, optional
+    :param mapping_position: mapping position, defaults to '0'
+    :type mapping_position: str, optional
+    :param mapping_quality: mapping quality, defaults to '255'
+    :type mapping_quality: str, optional 
+    :param cigar_string: CIGAR string of mutations relative to reference, 
+        defaults to '*'
+    :type cigar_string: str, optional
+    :param reference_name_of_mate: reference name of mate, defaults to '='
+    :type reference_name_of_mate: str, optional
+    :param position_of_mate: position of mate, defaults to '0'
+    :type position_of_mate: str, optional
+    :param template_length: length of template, defaults to '0' 
+    :type template_length: str, optional
+
+    :return: returns string of the fields, tab-separated for output as a
+        SAM record
+    :rtype: str
     """
-    This is just a utility to format output sam records. I do not intend to
-    do much with this, so mainly just to set the lack of mapping easily!
-    """
+
     return "\t".join([ record_id, flag, reference_name, mapping_position, 
             mapping_quality, cigar_string, reference_name_of_mate, 
             position_of_mate, template_length, sequence, qualities, tags ])
 
 
-def phred_letter_to_number(x):
+def phred_letter_to_number(letter):
+    """Simple function to turn a PHRED score from letter to number. That's it.
+
+    :param letter: PHRED score letter
+    :type letter: str
+    :return: Returns just PHRED score (Illumina 1.8+, I believe) 
+        score corresponding to the letter score
+    :rtype: int I think
     """
-    Turn a PHRED score from letter to number - I keep forgetting, so function.
-    """
-    return ord(x)-33
+    return ord(letter)-33
 
 
-def phred_number_to_letter(x):
+def phred_number_to_letter(score):
+    """Simple function to turn a PHRED score from number to letter. That's it.
+
+    :param score: PHRED score number
+    :type score: int
+    :return: Returns just PHRED score (Illumina 1.8+, I believe) 
+        letter corresponding to the numeric score
+    :rtype: str
     """
-    Turn a PHRED score from number to letter - I keep forgetting, so function.
-    """
-    return chr(x+33)
+    return chr(score+33)
 
 
-def phred_number_array_to_joined_string(x):
+def phred_number_array_to_joined_string(score_array):
+    """Turn a list of PHRED score numbers to a letter string. That's it.
+
+    :param score_array: PHRED score array
+    :type score_array: list of int
+    :return: Returns a string of the PHRED scores (Illumina 1.8+, I believe) 
+        converted from a numeric list to a letter string.
+    :rtype: str
     """
-    Turn a list of PHRED score numbers to a letter string.
-    """
-    return str("".join([ phred_number_to_letter(i) for i in x]))
+    return str("".join([ phred_number_to_letter(i) for i in score_array]))
 
 
 def read_sam_file(fh):
