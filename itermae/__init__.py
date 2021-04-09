@@ -111,10 +111,15 @@ def phred_number_array_to_joined_string(score_array):
 
 
 def read_sam_file(fh):
-    """
-    This is a minimal reader, just for getting the fields I like and emiting
-    SeqRecord objects, sort of like BioPython SeqIO. Putting SAM tags in 
-    description field, so it should be possible to pass those through.
+    """This is a minimal SAM reader, just for getting the fields I like and 
+    yielding SeqRecord objects, sort of like BioPython SeqIO. Here, we are
+    putting SAM tags into the description field so it should be possible to 
+    pass those through, but that's not well designed yet.
+    
+    :param fh: file handle to read
+    :type fh: file handle opened by
+    :return: yields SeqRecords
+    :rtype: Bio.SeqRecord.SeqRecord
     """
     for i in fh.readlines():
         fields = i.rstrip('\n').split('\t')
@@ -128,8 +133,13 @@ def read_sam_file(fh):
 
 
 def read_txt_file(fh):
-    """
-    This just yields one sequence per line as a SeqRecord.
+    """Reads a text file, and yields SeqRecords where the string in the line
+    is the sequence and the ID of the record.
+    
+    :param fh: file handle opened by 
+    :type fh: file handle opened by 
+    :return: yields SeqRecords
+    :rtype: Bio.SeqRecord.SeqRecord
     """
     for i in fh.readlines():
         seq = i.rstrip()
@@ -139,9 +149,21 @@ def read_txt_file(fh):
 # TODO consider moving the 'which' bit to something specified in the 
 # build_context, sort of like 'id' and 'description'
 def write_out_seq(seq,fh,format,which):
-    """
-    This little utility just handles which of the four formats to print out,
-    and for SAM appends a tag with which match this is. Using IE tag.
+    """This little utility just handles which of the four formats to print out,
+    and for SAM appends a tag with which match this is, using the IE tag.
+    
+    :param seq: The SeqRecord to write
+    :type seq: Bio.SeqRecord
+    :param fh: file handle
+    :type fh: file handle returned by
+    :param format: which format to output, one of 'sam', 'txt', or something
+        that Bio.SeqIO will recognize
+    :type format: str
+    :param which: which output this is, so for SAM this appened to a tag, but
+        is ignored for the other formats
+    :type which: str
+    :return: nothing, it writes to a file
+    :rtype: None
     """
     if format == "sam":
         print( format_sam_record( seq.id, str(seq.seq),
@@ -156,8 +178,9 @@ def write_out_seq(seq,fh,format,which):
 
 
 class Configuration:
-    """
-    This is for configuring itermae, from YAML or CLI arguments.
+    """This class is for configuring itermae, from YAML or CLI arguments.
+    No arguments for initializing, it will set default values.
+    Then you use the configuration methods.
     """
 
     def __init__(self):
@@ -190,6 +213,11 @@ class Configuration:
             'N':'[ATCGN]', '*':'.*', '+':'.+' }
 
     def open_input_fh(self):
+        """Opens file-handle based on the configuration.
+        Requires `input` to be set.
+
+        :raises ValueError: Can't handle gzipped inputs on STDIN.
+        """
         if self.input.upper() == 'STDIN':
             if self.gzipped:
                 raise ValueError("I can't handle gzipped inputs on STDIN ! "
@@ -204,6 +232,11 @@ class Configuration:
                 self.input_fh = open(self.input,'rt')
 
     def open_appropriate_input_format(self):
+        """Uses `input_format` and `input_fh` to set iterators
+        of SeqRecords from the appropriate inputs, in `input_seqs`.
+        Tries to handle all formats known, but will try with SeqIO
+        in case there's one I didn't think about.
+        """
         if   self.input_format == 'fastq':
             self.input_seqs = SeqIO.parse(self.input_fh, self.input_format)
         elif self.input_format == 'sam':
@@ -220,15 +253,29 @@ class Configuration:
             self.input_seqs = SeqIO.parse(self.input_fh, self.input_format)
 
     def get_input_seqs(self):
-        """
-        This calls 
-        to set the `input_seqs` attribute to be an iterator of BioPython
-        sequence records.
+        """This calls `open_input_fh()` to set the `input_fh` attribute,
+        then calls `open_appropriate_input_format` to use this and the 
+        `input_format` attribute to save an iterator of SeqRecords
+        into `input_seqs`.
+
+        Note this is inconsistent with design of the output, will pick one or
+        the other ... later.
         """
         self.open_input_fh()
         self.open_appropriate_input_format()
 
     def open_output_fh(self,file_string):
+        """Opens output file handle, which can then be written to later with 
+        a format specification.
+
+        Note this is inconsistent with design of the input, will pick one or
+        the other ... later.
+
+        :param file_string: file to wrote to, or STDOUT or STDERR
+        :type file_string: str
+        :return: file string for appending output
+        :rtype: file handle returned by `open()`
+        """
         if file_string is None:
             return None
         if file_string.upper() == 'STDOUT':
@@ -238,16 +285,10 @@ class Configuration:
         else:
             return open(file_string,'a')
 
-    def open_output(self):
-        self.output_fh = self.open_output_fh(self.output)
-
-    def open_report(self):
-        self.report_fh = self.open_output_fh(self.report)
-
-    def open_failed(self):
-        self.failed_fh = self.open_output_fh(self.failed)
-
     def close_fhs(self):
+        """This is for cleaning up, and tries to close file handles at
+        `input_seqs`, `ouput_fh`, `failed_fh`, `report_fh`.
+        """
         for i in [ self.input_seqs, self.output_fh, self.failed_fh, self.report_fh] :
             try:
                 i.close()
@@ -256,13 +297,18 @@ class Configuration:
 
     def check_reserved_name(self,name,
             reserved_names=['dummyspacer','input','id','description'] ):
-        """
-        This is just to check that the name is not one of these, if so, error out.
-        - 'dummyspacer' is so you can pop an X into your sequence as a separator
+        """This checks if the name is one of a reserved list, and raises error
+        if so. These names are reserved for these reasons:
+
+        - `dummyspacer` is so you can pop an X into your sequence as a separator
         delimiter for later processing
-        - 'input' is the input group, the original one
-        - 'id' is the input ID, here just as 'id' so it's easy to find
-        - 'description' is for mapping over the FASTQ description
+        - `input` is the input group, the original one
+        - `id` is the input ID, here just as `id` so it`s easy to find
+        - `description` is for mapping over the FASTQ description
+
+        :param name: name of group
+        :type name: str
+        :raises ValueError: raised if you're using one of the reserved names...
         """
         if name in reserved_names:
             raise ValueError("Hey, you can't name a capture group "+
@@ -270,10 +316,27 @@ class Configuration:
                 ", I'm using that/those! Pick a different name.")
 
     def config_from_file(self,file_path):
-        """
-        Tries to parse a configuration YAML file to update this configuration
-        object. Recommend you run this config first, then config_from_args.
-        Pass in the file path as an argument.
+        """Tries to parse a configuration YAML file to update this configuration
+        object. Pass in the file path as an argument.
+        Recommend you run this config first, then config_from_args, as done in
+        `bin/itermae`.
+        
+        :param file_path: file path to configure from, expecting it to point to
+            an appropriately formatted YAML file
+        :type file_path: str
+        :raises ValueError: Failure to parse the supplied YAML
+        :raise KeyError: You need to define a group called `pattern:` 
+            inside each of the list inside of `matches:`
+        :raise ValueError: Error in yaml config, you`ve repeated a group 
+            marking character to match in multiple places
+        :raise ValueError: Error in yaml config, the pattern and marking 
+            you`ve defined are of different lengths
+        :raise ValueError: Error in yaml config
+        :raise KeyError: Marked roup in `marking:` field does not have
+            corresponding entry in `marked_groups:`. 
+        :raise ValueError: Either the supplied `filter`, `id`, `seq`, or 
+            `description` expression for a match group does not look like a 
+            python expression
         """
 
         if file_path is None:
@@ -506,10 +569,18 @@ class Configuration:
 
 
     def config_from_args(self,args_copy):
+        """Make configuration object from arguments provided. Should be the 
+        same as the config_from_yaml output, if supplied the same.
 
-        """
-        Make configuration object from arguments provided. Should be the same as 
-        the config_from_yaml output, if supplied the same.
+        :param args_copy: pass in the `argparse` args object after collecting
+            the startup command line arguments
+        :type args_copy: argparse object, I think
+        :raise ValueError: I failed to build the regular expression for a match
+        :raise ValueError: The output IDs, seqs, descriptions, and filters are 
+            of unequal sizes, make them equal or only define one of each 
+        :raise ValueError: Either the supplied `filter`, `id`, `seq`, or 
+            `description` expression for a match group does not look like a 
+            python expression
         """
     
         if args_copy.verbose:
@@ -625,19 +696,20 @@ class Configuration:
         return return_string
 
     def reader(self):
-        """
-        This reads inputs, calls the `chop` function on each one, and sorts it
-        off to outputs. So this is called by the main function, and is mostly about
-        handling the I/O. 
+        """This reads inputs, calls the `chop` method on each one, and sorts 
+        it off to outputs. So this is called by the main function, and is 
+        mostly about handling the I/O and handing it to the `chop` function.
+        Thus, this depends on the `Configuration` class being properly 
+        configured with all the appropriate values.
         """
     
         # Input
         self.get_input_seqs()
     
         # Outputs - passed records, failed records, report file
-        self.open_output()
-        self.open_failed()
-        self.open_report()
+        self.output_fh = self.open_output_fh(self.output)
+        self.report_fh = self.open_output_fh(self.report)
+        self.failed_fh = self.open_output_fh(self.failed)
     
         # Do the chop-ing...
         for each_seq in self.input_seqs:
@@ -658,27 +730,46 @@ class Configuration:
     
         self.close_fhs()
     
-        return(0)
-
 
 class MatchScores:
-    """
-    This just makes an object to hold these three where they're easy to type
-    (as attributes not keyed dict). Well, and a flatten function for printing.
+    """This is a little class just to hold the three scores under attributes,
+    such that they're easier to type for writing filters. Also, it flattens
+    them for debug report printing.
+
+    :param substitions: number to store under `.substitions` attribute
+    :type substitions: int
+    :param insertions: number to store under `.insertions` attribute
+    :type insertions: int
+    :param deletions: number to store under `.deletions` attribute
+    :type deletions: int
     """
     def __init__(self, substitutions, insertions, deletions):
         self.substitutions = substitutions
         self.insertions = insertions
         self.deletions = deletions
     def flatten(self):
+        """Flatten this object for printing debug reports.
+    
+        :return: string in form substitutions_insertions_deletions
+        :rtype: str
+        """
         return str(self.substitutions)+"_"+str(self.insertions)+"_"+\
             str(self.deletions)
 
 
 class GroupStats:
-    """
-    This just makes an object to hold these three where they're easy to type
-    (as attributes not keyed dict). Well, and a flatten function for printing.
+    """Object for conveniently holding parameters from the match, so that
+    they're easier to type for filters/output specification, and to flatten
+    for debug printing.
+
+    :param start: number to store under `.start` attribute
+    :type start: int
+    :param end: number to store under `.end` attribute
+    :type end: int
+    :param length: number to store under `.length` attribute
+    :type length: int
+    :param quality: list of numbers to store under `.quality` attribute
+    :type quality: list of int
     """
     def __init__(self, start, end, quality):
         self.start = start 
@@ -686,18 +777,36 @@ class GroupStats:
         self.length = self.end - self.start
         self.quality = quality
     def flatten(self):
+        """Flatten this object for printing debug reports, but just for
+        the start, end, length attributes. Not quality.
+    
+        :return: string in form start_end_length
+        :rtype: str
+        """
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
 
 
 class SeqHolder: 
-    """
-    This is the main holder of sequences, and does the matching and stuff.
-    I figured a Class might make it a bit tidier.
+    """This is the main holder of sequences, and has methods for doing matching,
+    building contexts, filtering, etcetra. Basically there is one of these
+    initialized per input, then each operation is done with this object, then
+    it generates the appropriate outputs and `chop` actually writes them.
+    Used in `chop`.
+
+    The `.seqs` attribute holds the sequences accessed by the matching,
+    initialized with the `input_record` SeqRecord and a `dummyspacer` for
+    output formatting with a separator.
+    
+    :param input_record: an input SeqRecord object
+    :type input_record: Bio.SeqRecord.SeqRecord
+    :param configuration: the whole program's Configuration object, with
+        appropriate file-handles opened up and defaults set
+    :type configuration: itermae.Configuration
+#    :raises [ErrorType]: [ErrorDescription]
+#    :return: [ReturnDescription]
+#    :rtype: [ReturnType]
     """
     def __init__(self, input_record, configuration):
-        # So the .seqs holds the sequences accessed by the matching, and there's
-        # a dummyspacer in there just for making outputs where you want that
-        # for later partitioning. Input is input.
         self.seqs = {
             'dummyspacer': SeqRecord.SeqRecord(Seq.Seq("X"),id="dummyspacer"),
             'input': input_record }
@@ -709,9 +818,19 @@ class SeqHolder:
         self.group_stats = {}
 
     def apply_operation(self, match_id, input_group, regex):
-        """
-        This applies the matches, saves how it did, and saves extracted groups.
-        Details commented below.
+        """This applies the given match to the `SeqHolder` object, and saves 
+        how it did internally.
+
+        :param match_id: what name should we call this match? This is useful
+            for debugging reports and filtering only.
+        :type match_id: str
+        :param input_group: which input group to use, by name of the group
+        :type input_group: str
+        :param regex: the regular expression to apply, complete with named 
+            groups to save for subsequent match operations
+        :type regex: regex compiled regular expression object
+        :return: self, this is just done so it can exit early if no valid input
+        :rtype: itermae.SeqHolder
         """
 
         # Try to find the input, if it ain't here then just return
@@ -761,8 +880,7 @@ class SeqHolder:
             self.match_scores[match_id] = MatchScores(None,None,None)
 
     def build_context(self):
-        """
-        This just unpacks group match stats/scores into an environment that
+        """This unpacks group match stats/scores into an environment that
         the filter can then use to ... well ... filter. 
         """
 
@@ -789,8 +907,17 @@ class SeqHolder:
             **{ i: str(self.seqs[i].seq) for i in self.seqs } }
 
     def evaluate_filter_of_output(self,output_dict):
-        """
-        This tests a defined filter on the 'seq_holder' object
+        """This tests a user-defined filter on the 'seq_holder' object.
+        This has already been `compile`'d, and here we just attempt to
+        evaluate these to `True`, where `True` is passing the filter.
+        Exceptions are blocked by using `try`/`except` so that it can fail on 
+        a single match and move onto the next match/read.
+
+        :param output_dict: a dictionary of outputs to form, as generated from
+            the configuration initialization
+        :type output_dict: dict
+        :return: `True` if the filter passed and the output should be generated
+        :rtype: bool
         """
 
         try:
@@ -807,8 +934,14 @@ class SeqHolder:
             return False
 
     def build_output(self,output_dict):
-        """
-        This builds the output
+        """Builds the output from the `SeqHolder` object according to the 
+        outputs in `output_dict`.
+
+        :param output_dict: a dictionary of outputs to form, as generated from
+            the configuration initialization
+        :type output_dict: dict
+        :return: the successfully built SeqRecord, or None if it fails
+        :rtype: Bio.SeqRecord.SeqRecord or None
         """
 
         try:
@@ -836,8 +969,16 @@ class SeqHolder:
             return None
 
     def format_report(self,label,output_seq):
-        """
-        This is for formatting a standard report line for the reporting function
+        """Formats a standard report line for the debug reporting function.
+
+        :param label: what type of report line this is, so a string describing
+            how it went - passed? Failed?
+        :type label: str
+        :param label: the attempt at generating an output SeqRecord, so either
+            one that was formed or None
+        :type label: Bio.SeqRecord.SeqRecord or None
+        :return: the string for the report
+        :rtype: str
         """
 
         if output_seq is None:
@@ -863,9 +1004,11 @@ class SeqHolder:
             "\"" ) # See group_stats method for what these are (start stop len)
 
     def chop(self):
-        """
-        This one takes each record, applies the operations, evaluates the filters,
-        generates outputs, and writes them to output handles as appropriate.
+        """This executes the intended purpose of the `SeqRecord` object, and is
+        called once. It uses the configured object to apply each match
+        operation as best it can with the sequences it is given or can generate,
+        then writes the outputs in the specified formats to specified places
+        as configured.
         """
     
         # If qualities are missing, add them as just 40
