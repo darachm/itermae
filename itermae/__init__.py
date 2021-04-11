@@ -351,10 +351,7 @@ class Configuration:
 
         # Looking for verbosity instruction global, if not global, then in 'outputs'
         try:
-            try:
-                self.verbosity = config['verbosity']
-            except:
-                self.verbosity = config['output']['verbosity']
+            self.verbosity = config['verbosity']
         except:
             pass
 
@@ -371,11 +368,11 @@ class Configuration:
         except:
             pass
         try:
-            self.output = config['output']['to']
+            self.output = config['output_to']
         except:
             pass
         try:
-            self.output_format = config['output']['format']
+            self.output_format = config['output_format']
         except:
             pass
 
@@ -511,7 +508,7 @@ class Configuration:
         if self.verbosity >= 1:
             print("Processing output specifications.",file=sys.stderr)
 
-        output_list = config['output']['list'] # I do need some outputs, or fail
+        output_list = config['output_list'] # I do need some outputs, or fail
         for each in output_list:
 
             try:
@@ -559,11 +556,11 @@ class Configuration:
 
 
         try:
-            self.failed = config['output']['failed']
+            self.failed = config['output_failed']
         except:
             pass
         try:
-            self.report = config['output']['report']
+            self.report = config['output_report']
         except:
             pass
 
