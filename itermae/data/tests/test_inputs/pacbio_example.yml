@@ -1,0 +1,47 @@
+verbosity: 1
+
+matches:
+
+    -   use: input
+        pattern: TAGTTTTAAAACACCAGAACTTAGTTTCGA+
+        marking: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB
+        marked_groups:
+            A:
+                allowed_errors: 5
+            B:
+                name: postprimer
+
+    -   use: postprimer
+        pattern: AAAGTTGGCACCATG+TGCCAACTTTCTTGTA+
+        marking: AAAAAAAAAAAABBBBCCCCCCCCCCCCCCCCD
+        marked_groups:
+            A:
+                allowed_errors: 3
+            B:
+                name: orf
+            C:
+                allowed_errors: 3
+            D:
+                name: rest
+
+    -   use: rest
+        pattern: ACTATACGAACGGTANTGAGACATATCAGAT
+        marking: AAAAAAAAAAAAAAABCCCCCCCCCCCCCCC
+        marked_groups:
+            A:
+                allowed_errors: 3
+            B:
+                name: barcode
+                repeat_min: 20
+                repeat_max: 40
+            C:
+                allowed_errors: 3
+
+output: 
+    list:
+        -   name: orf_with_barcode
+            filter: 'orf.length >= 3'
+            id: id+"_barcode="+barcode
+            seq: orf
+    #failed: failed
+
