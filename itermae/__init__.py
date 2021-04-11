@@ -359,15 +359,15 @@ class Configuration:
             pass
 
         try:
-            self.input = config['input']['from']
+            self.input = config['input_from']
         except:
             pass
         try:
-            self.input_format = config['input']['format']
+            self.input_format = config['input_format']
         except:
             pass
         try:
-            self.gzipped = config['input']['gzipped']
+            self.gzipped = config['input_gzipped']
         except:
             pass
         try:

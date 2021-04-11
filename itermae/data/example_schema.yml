@@ -1,78 +1,94 @@
-# Example config YAML file for itermae. Indentation is hierarchical structure, 
-# ':'s denote if it is a dictionary key structure, 
-# '-'s preface array/list elements.
-# Comments are of course prefaced with an octothorpe.
+# Example config YAML file for itermae.
+# 
+# Syntax details:
+#   - # are comments
+#   - ':'s denote a key-value relationship, like
+#     'key: value'
+#   - '-'s preface array/list elements, so this is a list and order matters
+#   - order of keys does not matter
+#   - things inside a key-value (a ':') or inside a list (a '-') need to be 
+#     indented at least two spaces, and be consistent
+#   - strings can be in quotes or not, but I use them below for explicit
+#     consistency (except for true / false values, which are specified without
+#     quotes)
 
-# Input section (here first, but order doesn't matter)
-input:
-    from: STDIN # This is the default
-    format: fastq # Default, can be FASTQ, fasta, txt, SAM (case don't matter),
-                  # or something that you know BioPythonSeqIO handles
-    gzipped: false # Default
+verbosity: 1 # How verbose to be, that is output to standard error, and can be
+             # increased with the -v flag on command-line. Default is 0.
 
-# Defining the matches to run, the first and subsequent
-matches:
+# Inputs section 
+input_from: 'STDIN' # This is the default, but could also be a file path
+input_format: 'fastq' # This is the default, but can be FASTQ, fasta, txt, 
+    # SAM (case don't matter) or something that you know BioPython SeqIO handles
+input_gzipped: false # Default
 
-    -   use: input # Default
-        pattern: NGTCCACGAGGTCTCTNCGTACGCTG # Specify in IUPAC. Just use one N
-                                            # for barcodes/variable length seqs
-        marking: ABBBBBBBBBBBBBBBCDDDDDDDDD # Then specify what each group is
-        marked_groups:  # Then use the same character from marking to denote
-            A:          # additional info about the group, saveAs names, length
-                name: sampleIndex # Name to save it as, optional
-                repeat: 5            # How many times to repeat it, either this
-            B:                       # Or there's min max specification below
-                name: prefix
-                allowed_errors: 2 # How many errors are tolerated in this match?
-            C:                    # Below is example where indels/subs specified
-                name: barcode
-                repeat_min: 18 # Min or max range for repeats
-                repeat_max: 22
-            D:  
-                allowed_insertions: 1 # Allow 2 insert, 2 del, 1 subs
-                allowed_deletions: 2
-                allowed_substititions: 2
+matches: # This key's value is a list of matches to run, in order
+  - use: 'input' # What group to match against? Default is 'input'
+    pattern: 'NGTCCACGAGGTCTCTNCGTACGCTG' # Specify group patterns in IUPAC
+    marking: 'ABBBBBBBBBBBBBBBCDDDDDDDDD' # Then specify what each group is
+    marked_groups: # Then use the same character from marking to denote
+      A:           # additional info about the group
+          name: 'sampleIndex' # Optional name to save it as
+          repeat: 5           # How many times to repeat it if you're looking
+                              # for an exact number, here is 5 N's.
+                              # If you specify multiple characters, like
+                              # NNN, it would collapse that down to N and
+                              # repeat it 5 times ( like 'NNNNN' ).
+                              # If it's a multi-character pattern, like WS,
+                              # then each repeat is the entire specified
+                              # pattern ( so 'WS' with repeat 5 would look for 
+                              # 10 characters to match, 'WSWSWSWSWS' )
+      B:
+          name: 'prefix'
+          allowed_errors: 2 # How many of all types of errors are tolerated in 
+                            # this group? This is a less-than-or-equal value
+      C:
+          name: 'barcode'
+          repeat_min: 18 # Specify a min and/or max of times to repeat this
+          repeat_max: 22 # group for the matching, to match a range, here this
+                         # matches 18-22 N's
+      D:  # This one has no name
+          allowed_insertions: 1    # For more granularity, you can break down
+          allowed_deletions: 2     # the tolerated errors to different types,
+          allowed_substititions: 2 # where all conditions must be true and it's
+                                   # as specified in the 'regex' module
+                                   # specifications 
+                                   # (see bitbucket.org/mrabarnett/mrab-regex )
 
-    -   use: barcode # Subsequent matches can use previous captured groups as
-        pattern: N   # input, here just pulling the first five nucleotides
-        marking: A
-        marked_groups:
-            A:
-                name: first_five_barcode 
-                repeat: 5
+  - use: 'barcode' # Subsequent matches can use previous captured groups as
+                   # input, this is using group C from above 
+    pattern: 'N'
+    marking: 'z'
+    marked_groups:
+      z:          # This is just matching the first five bases of the barcode,
+                  # as a demonstration
+        name: first_five_barcode 
+        repeat: 5
 
 # Defining what to output
-output: 
-    verbosity: 1 # How verbose to be, this is output to standard error.
-                 # You can also define "outside" of 'output', you do you.
-    to: STDOUT # Default, also can be a filepath
-    format: fasta # Default is SAM, also can be FASTQ or txt
-    list: # List of different sequence records to generate in the SAME FILE
+output_to: 'STDOUT' # Default, also can be a filepath
+output_format: 'fasta' # Default is SAM, also can be FASTQ or txt
+output_list: # List of different sequence records to generate in the SAME FILE
 
+  - name: 'short_barcodes' 
+    seq: 'barcode' 
+    filter: 'True' # Filter to apply before outputing
+    description: 'description+" short_barcodes"'
 
+  - name: 'sampleIndex' 
+    seq: 'sampleIndex'
+    filter: 'sampleIndex.length == 5'
+    description: 'description+" this is just the sampleIndex"'
 
+  - name: 'usualbarcode' # optional, for debugging
+    seq: 'barcode'
+    id: 'id' # Default, specifying ID
+    description: 'description+" sample="+sampleIndex'
 
-        -   name: short_barcodes # optional, for debugging
-            seq: barcode 
-            filter: 'True' # Filter to apply before outputing
-            description: 'description+" short_barcodes"'
+  - name: 'other_barcodes' # optional, for debugging
+    seq: 'barcode' 
+    filter: 'True' # Filter to apply before outputing
+    description: 'description+" other_barcodes"'
 
-        -   name: sampleIndex 
-            seq: sampleIndex
-            filter: 'sampleIndex.length == 5'
-            description: 'description+" this is just the sampleIndex"'
-
-        -   name: usualbarcode # optional, for debugging
-            seq: 'barcode'
-            id: 'id' # Default, specifying ID
-            description: 'description+" sample="+sampleIndex'
-
-        -   name: other_barcodes # optional, for debugging
-            seq: barcode 
-            filter: 'True' # Filter to apply before outputing
-            description: 'description+" other_barcodes"'
-
-
-    failed: failed # optional, path to write failed reads to
-    report: report.csv # optional, CSV report for pass fail, only use with
-                       # small inputs, this is a lot of disk to write!!!
+failed: failed.fastq # optional, path to write failed reads to
+report: report.csv # optional, CSV report for pass fail, only use with
+                 # small inputs, this is a lot of disk to write!!!
