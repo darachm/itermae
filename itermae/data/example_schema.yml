@@ -68,10 +68,8 @@ matches: # This key's value is a list of matches to run, in order
 # Defining what to output
 output_list: # List of different sequence records to generate in the SAME FILE
 
-  - name: 'short_barcodes' 
-    seq: 'barcode' 
+  - seq: 'barcode' 
     filter: 'True' # Filter to apply before outputing
-    description: 'description+" short_barcodes"'
 
   - name: 'sampleIndex' 
     seq: 'sampleIndex'
