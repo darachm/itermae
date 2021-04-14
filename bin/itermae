@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser_input.add_argument("-i","--input",
         help=("Specify where the input reads are from. This can be a file "
             "path, but the suggested default is standard input ( 'STDIN' ).") )
-    parser_input.add_argument("-z","--gzipped",action="store_true",
+    parser_input.add_argument("-z","--gzipped",action="store_true",default=None,
         help=("Use this flag if the input is a gzipped file.") )
     parser_input.add_argument("--input-format",
         help=("Specify what format the input is. Default is 'FASTQ'. "
