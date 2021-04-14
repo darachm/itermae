@@ -228,61 +228,42 @@ def fastqfile():
 
 ## SeqHolder Tests
 
-
-# Test SeqHolder dummyspacer is right
-def test_seqholder_dummy(fastqfile):
-    for i in fastqfile:
-        seqholder = itermae.SeqHolder(i,verbosity=3)
-        # Is the sequence X?
-        assert seqholder.seqs['dummyspacer'].seq == 'X'
-        # Is the number we just put there 40?
-        assert seqholder.seqs['dummyspacer'].letter_annotations['phred_quality'] == [40] 
-
-ztest_configuration_args(configuration_yaml(),benchmark_config())
-
 # Test that SeqHolder can apply_operation, then since we're there testing
 # that it finds the right groups for each seq, and passes or fails filters 
 # appropriately.
-def test_seqholder_match_filter(fastqfile):
-    for seq, pos_pass, qual_pass, seq_pass, sequences_found, \
-        seq_targets, report_targets \
+def ztest_seqholder_match_filter(fastqfile,configuration=configuration_yaml()):
+    for seq, pos_pass, qual_pass, seq_pass, sequences_found, seq_targets \
         in zip(fastqfile,
-            [ i == 1 for i in [1,1,0,1,0,0,1,1,1] ],
-            [ i == 1 for i in [0,0,0,1,0,0,1,1,0] ],
-            [ i == 1 for i in [1,0,0,0,0,0,0,1,0] ],
+            [ i == 1 for i in [1,1,1,1,1,1,1,1,1] ],
+            [ i == 1 for i in [0,0,1,1,0,0,0,1,1] ],
+            [ i == 1 for i in [1,0,0,0,0,0,0,0,0] ],
             [   set(['dummyspacer','input','sample','fixed1','rest','tag','strain']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
-                set(['dummyspacer','input']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
-                set(['dummyspacer','input']),
-                set(['dummyspacer','input']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
+                set(['dummyspacer','input','sample','fixed1','rest','tag','strain']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
                 set(['dummyspacer','input','sample','fixed1','rest','tag','strain','fixed2','UMItail']),
             ],
-            [   ('ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000_TTCAC','TCAGTCGTAGCAGTTCGATG'),
-                ('ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001_GCTTC', 'TGGCAGACACACGCTACA'),
-                (None,None),
-                ('ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003_CTACT', 'GATGCACTGCGTTCCATGTT'),
-                (None,None),
-                (None,None),
-                ('ExampleToyReads:1:exampleFlowCell:1:10000:10006:10006_TCGGC', 'ATTCTGAGCGGTGCCATAGT'),
-                ('ExampleToyReads:1:exampleFlowCell:1:10000:10007:10007_AGGAG', 'ATAAGTTAGACAGGTCAGC'),
-                ('ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008_ACGTA', 'CACACGCACGAATTTGCATA')
-                ],
-            [   '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10000:10000","TTCACGTCCTCGAGGTCTCTTCAGTCGTAGCAGTTCGATGCGTACGCTACAGGTCGACGGTAAGAGAGGGATGTG","TCAGTCGTAGCAGTTCGATG","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20"',
-                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10001:10001","GCTTCGTCCTCGAGGTCTATTGGCAGACACACGCTACACGTACGCTGCAGGTCGAGGGCACGCGAGAGATGTGTG","TGGCAGACACACGCTACA","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_21_18-fixed2_21_36_15-UMItail_36_53_17"',
-                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10002:10002","CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC","TGGCAGACACACGCTACA","FilterResults",""',
-                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10003:10003","CTACTGTCCACGAGGTCTCTGATGCACTGCGTTCCATGTTCGTACGCTGCAGGTCGACGGAAGGAGCGCGATGTG","GATGCACTGCGTTCCATGTT","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"',
-                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10004:10004","AAATTAGGGTCAACGCTACCTGTAGGAAGTGTCCGCATAAAGTGCACCGCATGGAAATGAAGACGGCCATTAGCT","GATGCACTGCGTTCCATGTT","FilterResults",""',
-                '"fail_to_form","ExampleToyReads:1:exampleFlowCell:1:10000:10005:10005","CCCGGCGTTCGGGGAAGGACGTCAATAGTCACACAGTCCTTGACGGTATAATAACCACCATCATGGCGACCATCC","GATGCACTGCGTTCCATGTT","FilterResults",""',
-                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10006:10006","TCGGCGTCCTCGAGGTCTCTATTCTGAGCGGTGCCATAGTCGTACGCTGCAGGTCGACCGAAGGTGGGAGATGTG","ATTCTGAGCGGTGCCATAGT","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"',
-                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10007:10007","AGGAGGTCCTCGAGGTCTCTATAAGTTAGACAGGTCAGCCGTACGCTGCAGGTCGACAGCTGGCGCGCGATGTGA","ATAAGTTAGACAGGTCAGC","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_22_19-fixed2_22_37_15-UMItail_37_54_17"',
-                '"pass","ExampleToyReads:1:exampleFlowCell:1:10000:10008:10008","ACGTAGTCCACGAGGTCTCTCACACGCACGAATTTGCATACGTACGCTGCAGGTCGACTGGAAGGGCGGGATGTG","CACACGCACGAATTTGCATA","FilterResults","sample_0_5_5-fixed1_5_17_12-rest_17_75_58-tag_0_3_3-strain_3_23_20-fixed2_23_38_15-UMItail_38_55_17"'
-            ]
+            [   ('NB501157:100:H5J5LBGX2:1:11101:10000:10043_TTCAC', 'TCAGTCGTAGCAGTTCGATG'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:10138_GCTTC', 'TGGGCAGACACAACGCTACA'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:16613_GCTTC','GACAGACTGATAACCCTTGC'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:19701_CTACT', 'GATGCACTGCGTTCCATGTT'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:5096_TAAGT','AGGGCTCGTCGATTCGTCTT'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:6068_CTACT','GCAGATAATACACTGTCACC'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10000:8488_CATAA','TCGAGGGGTTACATACG'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10001:10798_TCTAG','GAGGCTACGGTACGTTCCTT'),
+                ('NB501157:100:H5J5LBGX2:1:11101:10001:11700_CGCAA','TGCGCCACATAGTATAAAT'),
+                ]
             ):
         # Read in the sequence to the holder
-        seqholder = itermae.SeqHolder(seq,verbosity=0)
+        seqholder = itermae.SeqHolder(seq,configuration=configuration)
+        # Is the dummy X?
+        assert seqholder.seqs['dummyspacer'].seq == 'X'
+        # Is the number we just put there 40?
+        assert seqholder.seqs['dummyspacer'].letter_annotations['phred_quality'] == [40] 
         # Apply operations
         seqholder.apply_operation('a','input',
             regex.compile("(?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}",
@@ -357,6 +338,9 @@ def test_seqholder_match_filter(fastqfile):
             assert seq_targets == ( None, None)
         else:
             assert seq_targets == ( built_output.id, built_output.seq ) 
+
+ztest_seqholder_match_filter(fastqfile(),configuration=configuration_yaml())
+
 
 ## Full Tests
 
