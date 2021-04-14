@@ -588,7 +588,7 @@ class Configuration:
                 for capture_name in re.findall('<(.*?)>',each):
                     self.check_reserved_name(capture_name)
                 try:
-                    (input_string, regex_string) = re.split("\s>\s",each.strip())
+                    (input_string, regex_string) = re.split(r"\s>\s",each.strip())
                 except:
                     input_string = 'input' # default to just use raw input
                     regex_string = each.strip()
@@ -603,53 +603,55 @@ class Configuration:
                     "command-line argument supplied.")
 
         # Adding in defaults for outputs. Can't do that with argparse, I think,
-        # because this needs to be appending. First add in defaults:
-        if not args_copy.output_id:
-            args_copy.output_id = ['id']
-        if not args_copy.output_filter:
-            args_copy.output_filter = ['True']
-        if not args_copy.output_description:
-            args_copy.output_description = ['description']
-        # Then normalize the length 1 to max length
-        maximum_number_of_outputs = max( [len(args_copy.output_id), 
-            len(args_copy.output_seq), len(args_copy.output_filter),
-            len(args_copy.output_description)] )
-        # Normalizing all singletons to same length
-        if len(args_copy.output_id) == 1:
-            args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
-        if len(args_copy.output_seq) == 1:
-            args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
-        if len(args_copy.output_filter) == 1:
-            args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
-        if len(args_copy.output_description) == 1:
-            args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
-        if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
-                len(args_copy.output_filter) == len(args_copy.output_description) ):
-            raise ValueError("The output IDs, seqs, descriptions, and "
-                "filters are of unequal sizes. Make them equal, or only "
-                "define one each and it will be reused across all."+
-                repr(( len(args_copy.output_id), len(args_copy.output_seq),
-                    len(args_copy.output_filter), len(args_copy.output_description) )) )
-
-        i = 0
-        for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
-            this_name = 'output_'+str(i)
-            i += 1
-            try:
-                self.outputs_array.append( {   
-                        'name': this_name,
-                        'filter': [ filterz, compile(filterz,'<string>','eval',optimize=2) ],
-                        'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
-                        'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
-                        'description':[ description, compile(description,'<string>','eval',optimize=2) ]
-                    })
-            except Exception as error:
-                raise ValueError(repr(error)+" : "
-                    "Either the supplied 'filter', 'id', 'seq', "
-                    "or 'description' expression for a match group does "
-                    "not look like a python expression - are all "
-                    "non-group-name parts in quotes? Are group-names and "
-                    "other parts connected with + signs?")
+        # because this needs to be appending. First add in defaults, but
+        # absolutely first need an output_seq to be defined for it to try this:
+        if args_copy.output_seq:
+            if not args_copy.output_id:
+                args_copy.output_id = ['id']
+            if not args_copy.output_filter:
+                args_copy.output_filter = ['True']
+            if not args_copy.output_description:
+                args_copy.output_description = ['description']
+            # Then normalize the length 1 to max length
+            maximum_number_of_outputs = max( [len(args_copy.output_id), 
+                len(args_copy.output_seq), len(args_copy.output_filter),
+                len(args_copy.output_description)] )
+            # Normalizing all singletons to same length
+            if len(args_copy.output_id) == 1:
+                args_copy.output_id = args_copy.output_id * maximum_number_of_outputs
+            if len(args_copy.output_seq) == 1:
+                args_copy.output_seq = args_copy.output_seq * maximum_number_of_outputs
+            if len(args_copy.output_filter) == 1:
+                args_copy.output_filter = args_copy.output_filter * maximum_number_of_outputs
+            if len(args_copy.output_description) == 1:
+                args_copy.output_description = args_copy.output_description * maximum_number_of_outputs
+            if not ( len(args_copy.output_id) == len(args_copy.output_seq) == 
+                    len(args_copy.output_filter) == len(args_copy.output_description) ):
+                raise ValueError("The output IDs, seqs, descriptions, and "
+                    "filters are of unequal sizes. Make them equal, or only "
+                    "define one each and it will be reused across all."+
+                    repr(( len(args_copy.output_id), len(args_copy.output_seq),
+                        len(args_copy.output_filter), len(args_copy.output_description) )) )
+    
+            i = 0
+            for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
+                this_name = 'output_'+str(i)
+                i += 1
+                try:
+                    self.outputs_array.append( {   
+                            'name': this_name,
+                            'filter': [ filterz, compile(filterz,'<string>','eval',optimize=2) ],
+                            'id': [ idz, compile(idz,'<string>','eval',optimize=2) ],
+                            'seq': [ seqz, compile(seqz,'<string>','eval',optimize=2) ] ,
+                            'description':[ description, compile(description,'<string>','eval',optimize=2) ]
+                        })
+                except Exception as error:
+                    raise ValueError(repr(error)+" : "
+                        "Either the supplied 'filter', 'id', 'seq', "
+                        "or 'description' expression for a match group does "
+                        "not look like a python expression - are all "
+                        "non-group-name parts in quotes? Are group-names and "
+                        "other parts connected with + signs?")
         
         # Passing through the rest, defaults should be set in argparse defs
         if args_copy.input is not None:
