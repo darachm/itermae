@@ -416,7 +416,7 @@ input_dicts = [
         'input_format': 'fasta', 'input_gzipped': 'true',
         'has_desc':True, 'seq_as_id':False},
     {   'input_from': 'itermae/data/tests/test_inputs/barseq.txt.gz',
-        'input_format': 'fastq', 'input_gzipped': 'true', 
+        'input_format': 'txt', 'input_gzipped': 'true', 
         'has_desc':False, 'seq_as_id':True},
 ]
 
@@ -503,10 +503,10 @@ output_yaml_blocks = [
 ]
 
 def making_a_full_test(config_file_path, 
-        which_input, which_output, which_matches, which_outputs ):
+        which_input, which_matches, which_output, which_outputs ):
     this_input_dict = input_dicts[which_input]
-    this_output_dict = output_dicts[which_output]
     this_match_yaml_block = match_yaml_blocks[which_matches]
+    this_output_dict = output_dicts[which_output]
     this_output_yaml_block = output_yaml_blocks[which_outputs]
     config_file = config_file_path / "config.yml"
     config_file.write_text(
@@ -524,9 +524,11 @@ def making_a_full_test(config_file_path,
     filename = ('itermae/data/tests/test_outputs/'+
         'matches-'+str(which_matches)+
         '_outputs-'+str(which_outputs)+
-        '_hasID-'+  str(this_input_dict['seq_as_id'])+
+        '_seqAsID-'+  str(this_input_dict['seq_as_id'])+
         '_hasDesc-'+str(this_input_dict['has_desc'])+
         '.'+this_output_dict['output_format'])
+    with open('tmpconf','w') as f:
+        f.write(config_file.read_text())
     with open(filename,'w') as f:
         f.write(results.stdout)
     with open(filename,'r') as f:
@@ -534,6 +536,146 @@ def making_a_full_test(config_file_path,
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
 
-def test_full_1(tmp_path):
+def test_full_0000(tmp_path):
     making_a_full_test(tmp_path,0,0,0,0)
-        
+def test_full_1000(tmp_path):
+    making_a_full_test(tmp_path,1,0,0,0)
+def test_full_2000(tmp_path):
+    making_a_full_test(tmp_path,2,0,0,0)
+def test_full_3000(tmp_path):
+    making_a_full_test(tmp_path,3,0,0,0)
+ 
+def test_full_0100(tmp_path):
+    making_a_full_test(tmp_path,0,1,0,0)
+def test_full_1100(tmp_path):
+    making_a_full_test(tmp_path,1,1,0,0)
+def test_full_2100(tmp_path):
+    making_a_full_test(tmp_path,2,1,0,0)
+def test_full_3100(tmp_path):
+    making_a_full_test(tmp_path,3,1,0,0)
+
+def test_full_0010(tmp_path):
+    making_a_full_test(tmp_path,0,0,1,0)
+def test_full_1010(tmp_path):
+    making_a_full_test(tmp_path,1,0,1,0)
+def test_full_2010(tmp_path):
+    making_a_full_test(tmp_path,2,0,1,0)
+def test_full_3010(tmp_path):
+    making_a_full_test(tmp_path,3,0,1,0)
+ 
+def test_full_0110(tmp_path):
+    making_a_full_test(tmp_path,0,1,1,0)
+def test_full_1110(tmp_path):
+    making_a_full_test(tmp_path,1,1,1,0)
+def test_full_2110(tmp_path):
+    making_a_full_test(tmp_path,2,1,1,0)
+def test_full_3110(tmp_path):
+    making_a_full_test(tmp_path,3,1,1,0)
+
+def test_full_0020(tmp_path):
+    making_a_full_test(tmp_path,0,0,2,0)
+def test_full_1020(tmp_path):
+    making_a_full_test(tmp_path,1,0,2,0)
+def test_full_2020(tmp_path):
+    making_a_full_test(tmp_path,2,0,2,0)
+def test_full_3020(tmp_path):
+    making_a_full_test(tmp_path,3,0,2,0)
+ 
+def test_full_0120(tmp_path):
+    making_a_full_test(tmp_path,0,1,2,0)
+def test_full_1120(tmp_path):
+    making_a_full_test(tmp_path,1,1,2,0)
+def test_full_2120(tmp_path):
+    making_a_full_test(tmp_path,2,1,2,0)
+def test_full_3120(tmp_path):
+    making_a_full_test(tmp_path,3,1,2,0)
+
+def test_full_0030(tmp_path):
+    making_a_full_test(tmp_path,0,0,3,0)
+def test_full_1030(tmp_path):
+    making_a_full_test(tmp_path,1,0,3,0)
+def test_full_2030(tmp_path):
+    making_a_full_test(tmp_path,2,0,3,0)
+def test_full_3030(tmp_path):
+    making_a_full_test(tmp_path,3,0,3,0)
+ 
+def test_full_0130(tmp_path):
+    making_a_full_test(tmp_path,0,1,3,0)
+def test_full_1130(tmp_path):
+    making_a_full_test(tmp_path,1,1,3,0)
+def test_full_2130(tmp_path):
+    making_a_full_test(tmp_path,2,1,3,0)
+def test_full_3130(tmp_path):
+    making_a_full_test(tmp_path,3,1,3,0)
+
+def test_full_0001(tmp_path):
+    making_a_full_test(tmp_path,0,0,0,1)
+def test_full_1001(tmp_path):
+    making_a_full_test(tmp_path,1,0,0,1)
+def test_full_2001(tmp_path):
+    making_a_full_test(tmp_path,2,0,0,1)
+def test_full_3001(tmp_path):
+    making_a_full_test(tmp_path,3,0,0,1)
+ 
+def test_full_0101(tmp_path):
+    making_a_full_test(tmp_path,0,1,0,1)
+def test_full_1101(tmp_path):
+    making_a_full_test(tmp_path,1,1,0,1)
+def test_full_2101(tmp_path):
+    making_a_full_test(tmp_path,2,1,0,1)
+def test_full_3101(tmp_path):
+    making_a_full_test(tmp_path,3,1,0,1)
+
+def test_full_0011(tmp_path):
+    making_a_full_test(tmp_path,0,0,1,1)
+def test_full_1011(tmp_path):
+    making_a_full_test(tmp_path,1,0,1,1)
+def test_full_2011(tmp_path):
+    making_a_full_test(tmp_path,2,0,1,1)
+def test_full_3011(tmp_path):
+    making_a_full_test(tmp_path,3,0,1,1)
+ 
+def test_full_0111(tmp_path):
+    making_a_full_test(tmp_path,0,1,1,1)
+def test_full_1111(tmp_path):
+    making_a_full_test(tmp_path,1,1,1,1)
+def test_full_2111(tmp_path):
+    making_a_full_test(tmp_path,2,1,1,1)
+def test_full_3111(tmp_path):
+    making_a_full_test(tmp_path,3,1,1,1)
+
+def test_full_0021(tmp_path):
+    making_a_full_test(tmp_path,0,0,2,1)
+def test_full_1021(tmp_path):
+    making_a_full_test(tmp_path,1,0,2,1)
+def test_full_2021(tmp_path):
+    making_a_full_test(tmp_path,2,0,2,1)
+def test_full_3021(tmp_path):
+    making_a_full_test(tmp_path,3,0,2,1)
+ 
+def test_full_0121(tmp_path):
+    making_a_full_test(tmp_path,0,1,2,1)
+def test_full_1121(tmp_path):
+    making_a_full_test(tmp_path,1,1,2,1)
+def test_full_2121(tmp_path):
+    making_a_full_test(tmp_path,2,1,2,1)
+def test_full_3121(tmp_path):
+    making_a_full_test(tmp_path,3,1,2,1)
+
+def test_full_0031(tmp_path):
+    making_a_full_test(tmp_path,0,0,3,1)
+def test_full_1031(tmp_path):
+    making_a_full_test(tmp_path,1,0,3,1)
+def test_full_2031(tmp_path):
+    making_a_full_test(tmp_path,2,0,3,1)
+def test_full_3031(tmp_path):
+    making_a_full_test(tmp_path,3,0,3,1)
+ 
+def test_full_0131(tmp_path):
+    making_a_full_test(tmp_path,0,1,3,1)
+def test_full_1131(tmp_path):
+    making_a_full_test(tmp_path,1,1,3,1)
+def test_full_2131(tmp_path):
+    making_a_full_test(tmp_path,2,1,3,1)
+def test_full_3131(tmp_path):
+    making_a_full_test(tmp_path,3,1,3,1)
