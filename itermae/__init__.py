@@ -635,7 +635,7 @@ class Configuration:
     
             i = 0
             for idz, seqz, filterz, description in zip(args_copy.output_id, args_copy.output_seq, args_copy.output_filter, args_copy.output_description) :
-                this_name = 'output_'+str(i)
+                this_name = 'untitled_output_'+str(i)
                 i += 1
                 try:
                     self.outputs_array.append( {   

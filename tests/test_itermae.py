@@ -336,88 +336,21 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
         else:
             assert seq_targets == ( built_output.id, built_output.seq ) 
 
-## Operations for argument-specified options
-#one_operation_string = (
-#    '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-#    '-os "barcode" -oi "id+\\"_\\"+sampleIndex" '
-#    )
-#two_operation_string = (
-#    '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>(GTCCTCGAGGTCTCT){e<=1}[ATCGN]*)" '+
-#    '-m "rest  > (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
-#    '-os "barcode" -oi "id+\\"_\\"+sampleIndex" '+
-#    '-os "upPrime+barcode+downPrime" -oi "id+\\"_withFixedFlanking_\\"+sampleIndex" '
-#    )
-
-## Each operation applied to shortread FASTQ, non-gzipped
-#def test_full_combinations():
-#    operations_list = [one_operation_string, two_operation_string]
-#    for input_format, which_ops, output_format in itertools.product(
-#            ['fastq','fasta','sam','txt'],
-#            [0,1],
-#            ['fastq','fasta','sam','txt'],
-#        ):
-#        results = subprocess.run(
-#            'cat itermae/data/barseq.'+input_format+' | '+
-#            'itermae '+
-#            '--input-format '+input_format+' '+
-#            operations_list[which_ops]+
-#            '--verbose --output-format '+output_format ,
-#            shell=True,capture_output=True,encoding='utf-8')
-#        filename = 'itermae/data/test_outputs/barseq_combinations_'
-#        filename += 'input_'+input_format+'_'
-#        filename += str(which_ops+1)+'_ops'
-#        filename += '.'+output_format
-##        with open(filename,'w') as f:
-##            f.write(results.stdout)
-#        with open(filename,'r') as f:
-#            expected_file = f.readlines()
-#        for i,j in zip(results.stdout.split('\n'),expected_file):
-#            assert str(i) == str(j.rstrip('\n'))
-
-## Each operation applied to shortread FASTQ, gzipped
-#def test_full_combinations_gzipped():
-#    operations_list = [one_operation_string, two_operation_string]
-#    for input_format, which_ops, output_format in itertools.product(
-#            ['fastq','fasta','sam','txt'],
-#            [0,1],
-#            ['fastq','fasta','sam','txt'],
-#        ):
-#        results = subprocess.run(
-#            'itermae '+
-#            '--input itermae/data/barseq.'+input_format+'.gz --gzipped '+
-#            '--input-format '+input_format+' '+
-#            operations_list[which_ops]+
-#            '--verbose --output-format '+output_format ,
-#            shell=True,capture_output=True,encoding='utf-8')
-#        filename = 'itermae/data/test_outputs/barseq_combinations_'
-#        filename += 'input_'+input_format+'_'
-#        filename += str(which_ops+1)+'_ops'
-#        filename += '.'+output_format
-##        with open(filename,'w') as f:
-##            f.write(results.stdout)
-#        with open(filename,'r') as f:
-#            expected_file = f.readlines()
-#        for i,j in zip(results.stdout.split('\n'),expected_file):
-#            assert str(i) == str(j.rstrip('\n'))
-
-# Buncha full tests:
-# Syntax of names is test_full_, then the test number, 
-# then the type of matches (simple one op, or complex UMI bit),
-# then the target type
+# Buncha tests, defining dicts and lists first, then running with it
 
 input_dicts = [
     {   'input_from': 'itermae/data/tests/test_inputs/barseq.sam.gz',
         'input_format': 'sam', 'input_gzipped': 'true', 
-        'has_desc':False, 'seq_as_id':False},
+        'has_quality':False,'has_desc':False, 'seq_as_id':False},
     {   'input_from': 'itermae/data/tests/test_inputs/barseq.fastq.gz',
         'input_format': 'fastq', 'input_gzipped': 'true',
-        'has_desc':True, 'seq_as_id':False},
+        'has_quality':True,'has_desc':True, 'seq_as_id':False},
     {   'input_from': 'itermae/data/tests/test_inputs/barseq.fasta.gz',
         'input_format': 'fasta', 'input_gzipped': 'true',
-        'has_desc':True, 'seq_as_id':False},
+        'has_quality':False,'has_desc':True, 'seq_as_id':False},
     {   'input_from': 'itermae/data/tests/test_inputs/barseq.txt.gz',
         'input_format': 'txt', 'input_gzipped': 'true', 
-        'has_desc':False, 'seq_as_id':True},
+        'has_quality':False,'has_desc':False, 'seq_as_id':True},
 ]
 
 match_yaml_blocks = [
@@ -460,18 +393,28 @@ match_yaml_blocks = [
             D:
                 name: downstream
     -   use: downstream
-        pattern: 'CGTACGCTGCAGGTCGACNGNANGNGNGNGAT'
-        marking: 'AAAAAAAAAAAAAAAAAABBBBBBBBBBBCCC'
+        pattern: 'CAGGTCGACNGNANGNGNGNGAT'
+        marking: 'AAAAAAAAABBBBBBBBBBBCCC'
         marked_groups:
             A:
                 name: fixed_pre_umi
-                allowed_errors: 2
+                allowed_errors: 1
             B:
                 name: interspersed_umi
                 allowed_errors: 1
             C:
                 name: tail
                 allowed_errors: 1
+"""
+]
+
+match_args_blocks = [
+"""--match 'input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>GTCCTCGAGGTCTCT)'"""
+,
+"""\
+--match 'input > (?P<sampleIndex>[ATCGN]{5,5})(?P<rest>GTCCTCGAGGTCTCT.+){e<=1}' \
+--match 'rest >  (?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}(?P<downstream>.+)' \
+--match 'downstream >  (?P<fixed_pre_umi>CAGGTCGAC){e<=1}(?P<interspersed_umi>[ATCGN]G[ATCGN]A[ATCGN]G[ATCGN]G[ATCGN]G[ATCGN]){e<=1}(?P<tail>GAT){e<=1}' \
 """
 ]
 
@@ -484,25 +427,33 @@ output_dicts = [
 
 output_yaml_blocks = [        
 """output_list: 
-    -   name: filtered_by_sampleIndex
-        filter: \'sampleIndex == "GCTTC"\' 
+    -   filter: \'sampleIndex == "GCTTC"\' 
         seq: 'input' 
 """
 ,
 """output_list: 
-    -   name: barcode 
-        filter: 'statistics.mean(barcode.quality) >= 25' 
-        id: 'id+"_"+sampleIndex'
+    -   filter: 'statistics.median(barcode.quality) >= 35' 
+        description: 'description+" sampleIndex="+sampleIndex+" umiSegment="+interspersed_umi'
         seq: 'barcode' 
-        description: 'description'
-    -   name: sampleIndex 
-        filter: 'sampleIndex.length >= 3'
-        id: 'id+"_withFixedFlanking_"+sampleIndex'
+    -   id: 'id+"_"+sampleIndex'
+        filter: 'statistics.median(barcode.quality) >= 40' 
+        seq: 'barcode' 
+    -   filter: 'barcode.length < 20'
+        description: 'description+" sampleIndex="+sampleIndex'
         seq: 'upPrime+barcode+downPrime' 
 """
 ]
 
-def making_a_full_test(config_file_path, 
+output_args_blocks = [        
+"""--output-seq 'input' --output-filter 'sampleIndex == "GCTTC"'"""
+,
+""" -os 'barcode' -of 'statistics.median(barcode.quality) >= 35' -oi 'id' -od 'description+" sampleIndex="+sampleIndex+" umiSegment="+interspersed_umi' \
+-os 'barcode' -of 'statistics.median(barcode.quality) >= 40' -oi 'id+"_"+sampleIndex' -od 'description' \
+-os 'upPrime+barcode+downPrime' -of 'barcode.length < 20' -oi 'id' -od 'description+" sampleIndex="+sampleIndex' \
+"""
+]
+
+def making_a_full_test_yaml(config_file_path, 
         which_input, which_matches, which_output, which_outputs ):
     this_input_dict = input_dicts[which_input]
     this_match_yaml_block = match_yaml_blocks[which_matches]
@@ -525,157 +476,193 @@ def making_a_full_test(config_file_path,
         'matches-'+str(which_matches)+
         '_outputs-'+str(which_outputs)+
         '_seqAsID-'+  str(this_input_dict['seq_as_id'])+
+        '_hasQuality-'+str(this_input_dict['has_quality'])+
         '_hasDesc-'+str(this_input_dict['has_desc'])+
         '.'+this_output_dict['output_format'])
-    with open('tmpconf','w') as f:
-        f.write(config_file.read_text())
-    with open(filename,'w') as f:
-        f.write(results.stdout)
+#    with open('tmpconf','w') as f:
+#        f.write(config_file.read_text())
+#    with open(filename,'w') as f:
+#        f.write(results.stdout)
     with open(filename,'r') as f:
         expected_file = f.readlines()
     for i,j in zip(results.stdout.split('\n'),expected_file):
         assert str(i) == str(j.rstrip('\n'))
 
-def test_full_0000(tmp_path):
-    making_a_full_test(tmp_path,0,0,0,0)
-def test_full_1000(tmp_path):
-    making_a_full_test(tmp_path,1,0,0,0)
-def test_full_2000(tmp_path):
-    making_a_full_test(tmp_path,2,0,0,0)
-def test_full_3000(tmp_path):
-    making_a_full_test(tmp_path,3,0,0,0)
- 
-def test_full_0100(tmp_path):
-    making_a_full_test(tmp_path,0,1,0,0)
-def test_full_1100(tmp_path):
-    making_a_full_test(tmp_path,1,1,0,0)
-def test_full_2100(tmp_path):
-    making_a_full_test(tmp_path,2,1,0,0)
-def test_full_3100(tmp_path):
-    making_a_full_test(tmp_path,3,1,0,0)
+def test_full_0000_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,0,0,0)
+def test_full_1000_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,0,0,0)
+def test_full_2000_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,0,0,0)
+def test_full_3000_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,0,0,0)
 
-def test_full_0010(tmp_path):
-    making_a_full_test(tmp_path,0,0,1,0)
-def test_full_1010(tmp_path):
-    making_a_full_test(tmp_path,1,0,1,0)
-def test_full_2010(tmp_path):
-    making_a_full_test(tmp_path,2,0,1,0)
-def test_full_3010(tmp_path):
-    making_a_full_test(tmp_path,3,0,1,0)
- 
-def test_full_0110(tmp_path):
-    making_a_full_test(tmp_path,0,1,1,0)
-def test_full_1110(tmp_path):
-    making_a_full_test(tmp_path,1,1,1,0)
-def test_full_2110(tmp_path):
-    making_a_full_test(tmp_path,2,1,1,0)
-def test_full_3110(tmp_path):
-    making_a_full_test(tmp_path,3,1,1,0)
+def test_full_0010_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,0,1,0)
+def test_full_1010_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,0,1,0)
+def test_full_2010_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,0,1,0)
+def test_full_3010_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,0,1,0)
 
-def test_full_0020(tmp_path):
-    making_a_full_test(tmp_path,0,0,2,0)
-def test_full_1020(tmp_path):
-    making_a_full_test(tmp_path,1,0,2,0)
-def test_full_2020(tmp_path):
-    making_a_full_test(tmp_path,2,0,2,0)
-def test_full_3020(tmp_path):
-    making_a_full_test(tmp_path,3,0,2,0)
+def test_full_0020_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,0,2,0)
+def test_full_1020_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,0,2,0)
+def test_full_2020_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,0,2,0)
+def test_full_3020_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,0,2,0)
  
-def test_full_0120(tmp_path):
-    making_a_full_test(tmp_path,0,1,2,0)
-def test_full_1120(tmp_path):
-    making_a_full_test(tmp_path,1,1,2,0)
-def test_full_2120(tmp_path):
-    making_a_full_test(tmp_path,2,1,2,0)
-def test_full_3120(tmp_path):
-    making_a_full_test(tmp_path,3,1,2,0)
+def test_full_0030_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,0,3,0)
+def test_full_1030_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,0,3,0)
+def test_full_2030_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,0,3,0)
+def test_full_3030_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,0,3,0)
+ 
+def test_full_0101_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,1,0,1)
+def test_full_1101_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,1,0,1)
+def test_full_2101_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,1,0,1)
+def test_full_3101_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,1,0,1)
 
-def test_full_0030(tmp_path):
-    making_a_full_test(tmp_path,0,0,3,0)
-def test_full_1030(tmp_path):
-    making_a_full_test(tmp_path,1,0,3,0)
-def test_full_2030(tmp_path):
-    making_a_full_test(tmp_path,2,0,3,0)
-def test_full_3030(tmp_path):
-    making_a_full_test(tmp_path,3,0,3,0)
- 
-def test_full_0130(tmp_path):
-    making_a_full_test(tmp_path,0,1,3,0)
-def test_full_1130(tmp_path):
-    making_a_full_test(tmp_path,1,1,3,0)
-def test_full_2130(tmp_path):
-    making_a_full_test(tmp_path,2,1,3,0)
-def test_full_3130(tmp_path):
-    making_a_full_test(tmp_path,3,1,3,0)
+def test_full_0111_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,1,1,1)
+def test_full_1111_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,1,1,1)
+def test_full_2111_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,1,1,1)
+def test_full_3111_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,1,1,1)
 
-def test_full_0001(tmp_path):
-    making_a_full_test(tmp_path,0,0,0,1)
-def test_full_1001(tmp_path):
-    making_a_full_test(tmp_path,1,0,0,1)
-def test_full_2001(tmp_path):
-    making_a_full_test(tmp_path,2,0,0,1)
-def test_full_3001(tmp_path):
-    making_a_full_test(tmp_path,3,0,0,1)
- 
-def test_full_0101(tmp_path):
-    making_a_full_test(tmp_path,0,1,0,1)
-def test_full_1101(tmp_path):
-    making_a_full_test(tmp_path,1,1,0,1)
-def test_full_2101(tmp_path):
-    making_a_full_test(tmp_path,2,1,0,1)
-def test_full_3101(tmp_path):
-    making_a_full_test(tmp_path,3,1,0,1)
+def test_full_0121_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,1,2,1)
+def test_full_1121_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,1,2,1)
+def test_full_2121_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,1,2,1)
+def test_full_3121_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,1,2,1)
 
-def test_full_0011(tmp_path):
-    making_a_full_test(tmp_path,0,0,1,1)
-def test_full_1011(tmp_path):
-    making_a_full_test(tmp_path,1,0,1,1)
-def test_full_2011(tmp_path):
-    making_a_full_test(tmp_path,2,0,1,1)
-def test_full_3011(tmp_path):
-    making_a_full_test(tmp_path,3,0,1,1)
- 
-def test_full_0111(tmp_path):
-    making_a_full_test(tmp_path,0,1,1,1)
-def test_full_1111(tmp_path):
-    making_a_full_test(tmp_path,1,1,1,1)
-def test_full_2111(tmp_path):
-    making_a_full_test(tmp_path,2,1,1,1)
-def test_full_3111(tmp_path):
-    making_a_full_test(tmp_path,3,1,1,1)
+def test_full_0131_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,0,1,3,1)
+def test_full_1131_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,1,1,3,1)
+def test_full_2131_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,2,1,3,1)
+def test_full_3131_yaml(tmp_path):
+    making_a_full_test_yaml(tmp_path,3,1,3,1)
 
-def test_full_0021(tmp_path):
-    making_a_full_test(tmp_path,0,0,2,1)
-def test_full_1021(tmp_path):
-    making_a_full_test(tmp_path,1,0,2,1)
-def test_full_2021(tmp_path):
-    making_a_full_test(tmp_path,2,0,2,1)
-def test_full_3021(tmp_path):
-    making_a_full_test(tmp_path,3,0,2,1)
- 
-def test_full_0121(tmp_path):
-    making_a_full_test(tmp_path,0,1,2,1)
-def test_full_1121(tmp_path):
-    making_a_full_test(tmp_path,1,1,2,1)
-def test_full_2121(tmp_path):
-    making_a_full_test(tmp_path,2,1,2,1)
-def test_full_3121(tmp_path):
-    making_a_full_test(tmp_path,3,1,2,1)
 
-def test_full_0031(tmp_path):
-    making_a_full_test(tmp_path,0,0,3,1)
-def test_full_1031(tmp_path):
-    making_a_full_test(tmp_path,1,0,3,1)
-def test_full_2031(tmp_path):
-    making_a_full_test(tmp_path,2,0,3,1)
-def test_full_3031(tmp_path):
-    making_a_full_test(tmp_path,3,0,3,1)
+def making_a_full_test_args(
+        which_input, which_matches, which_output, which_outputs ):
+    this_input_dict = input_dicts[which_input]
+    this_match_args_block = match_args_blocks[which_matches]
+    this_output_dict = output_dicts[which_output]
+    this_output_args_block = output_args_blocks[which_outputs]
+    cmd_string = ( 'itermae '+
+        '--input '+this_input_dict['input_from']+" "+
+        {'false':'','true':'-z '}[this_input_dict['input_gzipped']]+
+        '--input-format '+this_input_dict['input_format']+" "+
+        this_match_args_block+" "+
+        '--output '+this_output_dict['output_to']+" "+
+        '--output-format '+this_output_dict['output_format']+" "+
+        this_output_args_block
+        )
+    with open('tmp','w') as f:
+        f.write(cmd_string)
+    results = subprocess.run(
+        cmd_string,
+        shell=True,capture_output=True,encoding='utf-8')
+    filename = ('itermae/data/tests/test_outputs/'+
+        'matches-'+str(which_matches)+
+        '_outputs-'+str(which_outputs)+
+        '_seqAsID-'+  str(this_input_dict['seq_as_id'])+
+        '_hasQuality-'+str(this_input_dict['has_quality'])+
+        '_hasDesc-'+str(this_input_dict['has_desc'])+
+        '.'+this_output_dict['output_format'])
+#    with open(filename,'w') as f:
+#        f.write(results.stdout)
+    with open(filename,'r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+def test_full_0000_args():
+    making_a_full_test_args(0,0,0,0)
+def test_full_1000_args():
+    making_a_full_test_args(1,0,0,0)
+def test_full_2000_args():
+    making_a_full_test_args(2,0,0,0)
+def test_full_3000_args():
+    making_a_full_test_args(3,0,0,0)
+
+def test_full_0010_args():
+    making_a_full_test_args(0,0,1,0)
+def test_full_1010_args():
+    making_a_full_test_args(1,0,1,0)
+def test_full_2010_args():
+    making_a_full_test_args(2,0,1,0)
+def test_full_3010_args():
+    making_a_full_test_args(3,0,1,0)
+
+def test_full_0020_args():
+    making_a_full_test_args(0,0,2,0)
+def test_full_1020_args():
+    making_a_full_test_args(1,0,2,0)
+def test_full_2020_args():
+    making_a_full_test_args(2,0,2,0)
+def test_full_3020_args():
+    making_a_full_test_args(3,0,2,0)
  
-def test_full_0131(tmp_path):
-    making_a_full_test(tmp_path,0,1,3,1)
-def test_full_1131(tmp_path):
-    making_a_full_test(tmp_path,1,1,3,1)
-def test_full_2131(tmp_path):
-    making_a_full_test(tmp_path,2,1,3,1)
-def test_full_3131(tmp_path):
-    making_a_full_test(tmp_path,3,1,3,1)
+def test_full_0030_args():
+    making_a_full_test_args(0,0,3,0)
+def test_full_1030_args():
+    making_a_full_test_args(1,0,3,0)
+def test_full_2030_args():
+    making_a_full_test_args(2,0,3,0)
+def test_full_3030_args():
+    making_a_full_test_args(3,0,3,0)
+ 
+def test_full_0101_args():
+    making_a_full_test_args(0,1,0,1)
+def test_full_1101_args():
+    making_a_full_test_args(1,1,0,1)
+def test_full_2101_args():
+    making_a_full_test_args(2,1,0,1)
+def test_full_3101_args():
+    making_a_full_test_args(3,1,0,1)
+
+def test_full_0111_args():
+    making_a_full_test_args(0,1,1,1)
+def test_full_1111_args():
+    making_a_full_test_args(1,1,1,1)
+def test_full_2111_args():
+    making_a_full_test_args(2,1,1,1)
+def test_full_3111_args():
+    making_a_full_test_args(3,1,1,1)
+
+def test_full_0121_args():
+    making_a_full_test_args(0,1,2,1)
+def test_full_1121_args():
+    making_a_full_test_args(1,1,2,1)
+def test_full_2121_args():
+    making_a_full_test_args(2,1,2,1)
+def test_full_3121_args():
+    making_a_full_test_args(3,1,2,1)
+
+def test_full_0131_args():
+    making_a_full_test_args(0,1,3,1)
+def test_full_1131_args():
+    making_a_full_test_args(1,1,3,1)
+def test_full_2131_args():
+    making_a_full_test_args(2,1,3,1)
+def test_full_3131_args():
+    making_a_full_test_args(3,1,3,1)
