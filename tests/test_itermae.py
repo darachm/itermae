@@ -221,7 +221,7 @@ def test_groupstats_repr(groupstats):
 # This instead uses that to return a list of the records in the file.
 @pytest.fixture
 def fastqfile():
-    return SeqIO.parse("itermae/data/barseq.fastq","fastq")
+    return SeqIO.parse("itermae/data/tests/test_inputs/barseq.fastq","fastq")
 
 ## SeqHolder Tests
 
