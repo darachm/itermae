@@ -47,7 +47,7 @@ MAINTAINER darachm
     apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev gawk perl
 
     python3 -m pip install --upgrade pip
-    python3 -m pip install itermae==0.5.9.9
+    python3 -m pip install itermae
 
 %test
 
