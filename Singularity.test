@@ -6,15 +6,16 @@ MAINTAINER darachm
 
 %files
 
-    dist/itermae*whl ./
-#dist/itermae-0.5.0.post1.whl 
+    requirements.txt
 
 %help
 
     testing
 
 %post
-    python3 -m pip install itermae*.whl
+
+    python3 -m pip install -r requirements.txt
+    python3 -m pip install --index-url https://test.pypi.org/simple/ itermae==0.5.9.9
 
 %test
 
