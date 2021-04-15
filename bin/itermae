@@ -24,15 +24,17 @@ if __name__ == '__main__':
 
     parser_config = parser.add_argument_group("Configuration file (optional)")
     parser_config.add_argument("--config",
-        help=("File path to the config file. If specified, overrules all "
-            "other relevant arguments. See examples/docs.") )
+        help=("File path to the config file. If specified, that file is set "
+            "first, then other relevant arguments from the command-line are "
+            "set. See examples/docs.") )
 
     parser_input = parser.add_argument_group("Defining input sources")
     parser_input.add_argument("-i","--input",
         help=("Specify where the input reads are from. This can be a file "
             "path, but the suggested default is standard input ( 'STDIN' ).") )
     parser_input.add_argument("-z","--gzipped",action="store_true",default=None,
-        help=("Use this flag if the input is a gzipped file.") )
+        help=("Use this flag if the input is a gzipped file. I can't gunzip "
+            "a file pipe-d in, so use 'zcat'.") )
     parser_input.add_argument("--input-format",
         help=("Specify what format the input is. Default is 'FASTQ'. "
             "I expect this, or 'SAM', 'FASTA', or 'txt'. Case insensitive.") )
@@ -55,13 +57,13 @@ if __name__ == '__main__':
         help=("Optional filepath for writing a report of read-level "
             "statistics. This is a large inefficient output, but useful for "
             "debugging by using with a small subset of the data (such as "
-            "1000 lines or so") )
+            "1000 lines or so).") )
 
     parser_match = parser.add_argument_group('Matches')
     parser_match.add_argument("-m","--match",action="append",default=[],
         help=("Specify what is being matched against, the "
             "regular expression, and what groups to extract. Format example: "
-            "\n    'someInputGroup > regExprWith(?<someGroupName>MatchGroups)'"
+            "\n    'someInputGroup > regExprWith(?P<someGroupName>MatchGroups)'"
             "\nIf no input group is specified on the left of a ' > ' "
             "delimiter, then I assume you mean the raw input sequence "
             "(ie the same as putting 'input > ' in front). This, and several "
