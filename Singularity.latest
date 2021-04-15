@@ -1,7 +1,5 @@
 Bootstrap: docker
 From: ubuntu:20.04
-#Bootstrap: localimage
-#From: ../ubuntu-1804-updated_container/ubuntu.simg
 
 %labels
 MAINTAINER darachm
@@ -49,7 +47,7 @@ MAINTAINER darachm
     apt -y install gzip xz-utils bzip2 zip curl libcurl4-openssl-dev gawk perl
 
     python3 -m pip install --upgrade pip
-    python3 -m pip install itermae==0.6.0.prerelease1
+    python3 -m pip install itermae==0.5.9.9
 
 %test
 
