@@ -8,7 +8,7 @@ import itermae
 # line program
 import regex
 # Required for testing SeqHolder etc. without the file IO of main script
-from Bio import SeqIO
+from Bio import SeqIO, Seq, SeqRecord
 # For doing combinations of the full-file parameters and formats
 import itertools
 # Required for full-file input/output testing
@@ -198,7 +198,8 @@ def test_matchscore_flatten(matchscore):
 # Test GroupStats class
 @pytest.fixture
 def groupstats():
-    return itermae.GroupStats(5,15,[36]*10)
+    return itermae.GroupStats(5,15,
+        SeqRecord.SeqRecord(Seq.Seq('ATCGATCGAT')),[36]*10)
 
 def test_groupstats_start(groupstats):
     assert groupstats.start == 5
@@ -210,6 +211,9 @@ def test_groupstats_quality(groupstats):
     assert groupstats.quality == [36]*10
 def test_groupstats_flatten(groupstats):
     assert groupstats.flatten() == "5_15_10"
+
+def test_groupstats_repr(groupstats):
+    assert type(repr(groupstats)) == type(str())
 
 
 # Setup inputs
@@ -302,7 +306,7 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
                 }) 
         assert qual_pass == filter_result
         # Does it pass a specific sequence filter?
-        third_filter = 'sample.seq == "TTCAC" or sample.seq == "AGGAG"'
+        third_filter = 'sample == "TTCAC" or sample == "AGGAG"'
         filter_result = seqholder.evaluate_filter_of_output(
                 {   'name':'test',
                     'filter': [ third_filter,
@@ -332,23 +336,6 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
         else:
             assert seq_targets == ( built_output.id, built_output.seq ) 
 
-
-#
-### Full Tests
-#
-## Using the YML configuration file, but only with one format of output tested
-#def test_full_combinations_yml():
-#    results = subprocess.run(
-#        'itermae --config itermae/data/test_schema.yml',
-#        shell=True,capture_output=True,encoding='utf-8')
-#    filename = 'itermae/data/test_outputs/barseq_ymltest.sam'
-##    with open(filename,'w') as f:
-##        f.write(results.stdout)
-#    with open(filename,'r') as f:
-#        expected_file = f.readlines()
-#    for i,j in zip(results.stdout.split('\n'),expected_file):
-#        assert str(i) == str(j.rstrip('\n'))
-#
 ## Operations for argument-specified options
 #one_operation_string = (
 #    '-m "input > (?P<sampleIndex>[ATCGN]{5,5})(?P<upPrime>GTCCTCGAGGTCTCT){e<=1}(?P<barcode>[ATCGN]{18,22})(?P<downPrime>CGTACGCTG){e<=1}" '+
@@ -360,7 +347,7 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
 #    '-os "barcode" -oi "id+\\"_\\"+sampleIndex" '+
 #    '-os "upPrime+barcode+downPrime" -oi "id+\\"_withFixedFlanking_\\"+sampleIndex" '
 #    )
-#
+
 ## Each operation applied to shortread FASTQ, non-gzipped
 #def test_full_combinations():
 #    operations_list = [one_operation_string, two_operation_string]
@@ -386,8 +373,7 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
 #            expected_file = f.readlines()
 #        for i,j in zip(results.stdout.split('\n'),expected_file):
 #            assert str(i) == str(j.rstrip('\n'))
-#
-#
+
 ## Each operation applied to shortread FASTQ, gzipped
 #def test_full_combinations_gzipped():
 #    operations_list = [one_operation_string, two_operation_string]
@@ -413,3 +399,141 @@ def test_seqholder_match_filter(fastqfile,configuration_yaml):
 #            expected_file = f.readlines()
 #        for i,j in zip(results.stdout.split('\n'),expected_file):
 #            assert str(i) == str(j.rstrip('\n'))
+
+# Buncha full tests:
+# Syntax of names is test_full_, then the test number, 
+# then the type of matches (simple one op, or complex UMI bit),
+# then the target type
+
+input_dicts = [
+    {   'input_from': 'itermae/data/tests/test_inputs/barseq.sam.gz',
+        'input_format': 'sam', 'input_gzipped': 'true', 
+        'has_desc':False, 'seq_as_id':False},
+    {   'input_from': 'itermae/data/tests/test_inputs/barseq.fastq.gz',
+        'input_format': 'fastq', 'input_gzipped': 'true',
+        'has_desc':True, 'seq_as_id':False},
+    {   'input_from': 'itermae/data/tests/test_inputs/barseq.fasta.gz',
+        'input_format': 'fasta', 'input_gzipped': 'true',
+        'has_desc':True, 'seq_as_id':False},
+    {   'input_from': 'itermae/data/tests/test_inputs/barseq.txt.gz',
+        'input_format': 'fastq', 'input_gzipped': 'true', 
+        'has_desc':False, 'seq_as_id':True},
+]
+
+match_yaml_blocks = [
+"""matches:
+    -   use: 'input'
+        pattern: 'NGTCCTCGAGGTCTCT'
+        marking: 'ABBBBBBBBBBBBBBB'
+        marked_groups:
+            A:
+                name: sampleIndex
+                repeat: 5
+            B:
+                name: rest"""
+,
+"""matches:
+    -   use: 'input'
+        pattern: 'NGTCCTCGAGGTCTCT+'
+        marking: 'ABBBBBBBBBBBBBBBB'
+        marked_groups:
+            A:
+                name: sampleIndex
+                repeat: 5
+            B:
+                name: rest
+                allowed_errors: 1 
+    -   use: rest 
+        pattern: 'GTCCTCGAGGTCTCTNCGTACGCTG+'
+        marking: 'AAAAAAAAAAAAAAABCCCCCCCCCD'
+        marked_groups:
+            A:
+                name: upPrime
+                allowed_errors: 1
+            B:
+                name: barcode
+                repeat_min: 18
+                repeat_max: 22
+            C:
+                name: downPrime
+                allowed_errors: 1
+            D:
+                name: downstream
+    -   use: downstream
+        pattern: 'CGTACGCTGCAGGTCGACNGNANGNGNGNGAT'
+        marking: 'AAAAAAAAAAAAAAAAAABBBBBBBBBBBCCC'
+        marked_groups:
+            A:
+                name: fixed_pre_umi
+                allowed_errors: 2
+            B:
+                name: interspersed_umi
+                allowed_errors: 1
+            C:
+                name: tail
+                allowed_errors: 1
+"""
+]
+
+output_dicts = [
+    {   'output_to': 'STDOUT', 'output_format': 'sam' },
+    {   'output_to': 'STDOUT', 'output_format': 'fastq' },
+    {   'output_to': 'STDOUT', 'output_format': 'fasta' },
+    {   'output_to': 'STDOUT', 'output_format': 'txt' }
+]
+
+output_yaml_blocks = [        
+"""output_list: 
+    -   name: filtered_by_sampleIndex
+        filter: \'sampleIndex == "GCTTC"\' 
+        seq: 'input' 
+"""
+,
+"""output_list: 
+    -   name: barcode 
+        filter: 'statistics.mean(barcode.quality) >= 25' 
+        id: 'id+"_"+sampleIndex'
+        seq: 'barcode' 
+        description: 'description'
+    -   name: sampleIndex 
+        filter: 'sampleIndex.length >= 3'
+        id: 'id+"_withFixedFlanking_"+sampleIndex'
+        seq: 'upPrime+barcode+downPrime' 
+"""
+]
+
+def making_a_full_test(config_file_path, 
+        which_input, which_output, which_matches, which_outputs ):
+    this_input_dict = input_dicts[which_input]
+    this_output_dict = output_dicts[which_output]
+    this_match_yaml_block = match_yaml_blocks[which_matches]
+    this_output_yaml_block = output_yaml_blocks[which_outputs]
+    config_file = config_file_path / "config.yml"
+    config_file.write_text(
+        'input_from: '+this_input_dict['input_from']+"\n"+
+        'input_format: '+this_input_dict['input_format']+"\n"+
+        'input_gzipped: '+this_input_dict['input_gzipped']+"\n"+
+        this_match_yaml_block+"\n"+
+        'output_to: '+this_output_dict['output_to']+"\n"+
+        'output_format: '+this_output_dict['output_format']+"\n"+
+        this_output_yaml_block
+    )
+    results = subprocess.run(
+        'itermae -v --config '+str(config_file),
+        shell=True,capture_output=True,encoding='utf-8')
+    filename = ('itermae/data/tests/test_outputs/'+
+        'matches-'+str(which_matches)+
+        '_outputs-'+str(which_outputs)+
+        '_hasID-'+  str(this_input_dict['seq_as_id'])+
+        '_hasDesc-'+str(this_input_dict['has_desc'])+
+        '.'+this_output_dict['output_format'])
+    with open(filename,'w') as f:
+        f.write(results.stdout)
+    with open(filename,'r') as f:
+        expected_file = f.readlines()
+    for i,j in zip(results.stdout.split('\n'),expected_file):
+        assert str(i) == str(j.rstrip('\n'))
+
+def test_full_1(tmp_path):
+    making_a_full_test(tmp_path,0,0,0,0)
+        
