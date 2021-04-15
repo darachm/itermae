@@ -622,7 +622,10 @@ will output that sequence if it passes the filter. Such as::
 
 The filter is evaluated as python, so you can use things like ``>=`` or
 ``and`` or ``or`` to combine multiple statements in the filter.
-There are several of such properties available internally per matched group, 
+Of note, use ``==`` or ``!=`` to test equivalence, NOT ``is``.
+For example, you could test ``sampleIndex == 'GCTTC'``.
+
+There are several other properties available internally per matched group, 
 such as:
 
 * ``some_group.start`` - specifies where in the read ``some_group`` starts
@@ -631,9 +634,9 @@ such as:
 * ``some_group.quality`` - stores a numeric array of the PHRED qualities 
     associated with the sequence in ``some_group``
 
-For that last one especially, the module ``statistics`` is loaded so that you
-may make use of expressions such as 
-``statistics.median(some_group.quality) >= 30``. 
+For that last property especially (quality), the module ``statistics`` is 
+loaded so that you may make use of expressions such as 
+``statistics.median( some_group.quality ) >= 30``. 
 See the `statistics <https://docs.python.org/3/library/statistics.html>`_ module
 for more functions, like 
 ``statistics.mean(some_group.quality) >= 30`` or 
@@ -643,19 +646,20 @@ There are match-level properties too. Each match is named ``match_0`` or
 ``match_1`` etc in the order that it is specified (in YAML or command line),
 so these properties can also be used in a filter:
 
-* ``some_match.substitutions`` - stores how many substitutions were necessary 
-  for a match
-* ``some_match.insertions`` - stores how many insertions were necessary 
-  for a match
-* ``some_match.deletions`` - stores how many deletions were necessary 
-  for a match
+* ``match_0.substitutions`` - stores how many substitutions were necessary 
+  for the first match
+* ``match_2.insertions`` - stores how many insertions were necessary 
+  for the third match
+* ``match_42.deletions`` - stores how many deletions were necessary 
+  for the 43rd match
 
 I do not anticipate these to be readily useful, but they are available in case
 you envision some useful edge case, like 
 ``( statistics.mean(some_group.quality) >= 30 and match_0.substitions == 0 ) or ( statistics.mean(some_group.quality) <= 30 and match_0.substitions >= 0) )`` 
 ... it's there if you need it.
 
-Adding that into the previous configuration, here the file we have built up:
+Anyways,
+adding that into the previous configuration, here the file we have built up:
 
 .. jupyter-execute::
     :stderr:
