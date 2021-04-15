@@ -32,7 +32,7 @@ and outputs them again.
     :stderr:
     :raises:
  
-    head -n 8 itermae/data/barseq.fastq \
+    head -n 8 itermae/data/tests/test_inputs/barseq.fastq \
         | itermae -m "input > ." -os "input"
 
 We could use this as a format converter, by using ``--output-format``.
@@ -41,7 +41,7 @@ We could use this as a format converter, by using ``--output-format``.
     :stderr:
     :raises:
  
-    head -n 8 itermae/data/barseq.fastq \
+    head -n 8 itermae/data/tests/test_inputs/barseq.fastq \
         | itermae -m "input > ." -os "input" --output-format fasta
 
 And we can read different input formats by specifying ``--input-format``.
@@ -50,7 +50,7 @@ And we can read different input formats by specifying ``--input-format``.
     :stderr:
     :raises:
  
-    head -n 4 itermae/data/barseq.fasta \
+    head -n 4 itermae/data/tests/test_inputs/barseq.fasta \
         | itermae -m "input > ." -os "input" \
             --input-format fasta --output-format fastq
 
@@ -122,7 +122,7 @@ The below command parses that:
     :stderr:
     :raises:
  
-    head -n 40 itermae/data/barseq.fastq \
+    head -n 40 itermae/data/tests/test_inputs/barseq.fastq \
         | itermae \
             -m "input > (?P<sample>[ATCG]{5})(?P<fixed1>GTCCACGAGGTC){e<=2}(?P<rest>TCT.*){e<=1}" \
             -m "rest > (?P<tag>TCT){e<=1}(?P<strain>[ATCG]{10,26})(CGTACGCTGC){e<=2}" \
@@ -156,9 +156,10 @@ For example:
             --output-format sam
 
 Note that there are alternating lines of the sample barcode (~6-base)
-and strain barcode (~26-base), with tags of ``IE:Z:output_0``
-and ``IE:Z:output_1``. This would permit splitting these with 
-something like ``... | grep "IE:Z:output_0" | ...`` in the pipeline.
+and strain barcode (~26-base), with tags of ``IE:Z:untitled_output_0``
+and ``IE:Z:untitled_output_1``. This would permit splitting these with 
+something like ``... | grep "IE:Z:untitled_output_0" | ...`` in the pipeline.
+( Note: the YAML API, as detailed in :doc:`tutorial`, permits naming outputs. )
 
 
 Parallelization - with parallel
@@ -198,6 +199,7 @@ chunks are run per the overhead of each ``itermae`` configuration and setup
 stage. The number of jobs run defaults to run one job per CPU, but can be 
 regulated with a ``-j 4`` option.
 
+GNU parallel has `extensive documentation and tutorials <https://www.gnu.org/software/parallel/index.html#Tutorial>`_.
 
 .. Should add examples with special considerations about really big/long sam 
    files, ie PacBio data, but I'm still working that out!

@@ -41,7 +41,7 @@ as those tend to be a bit erroneous.
     :stderr:
     :raises:
 
-    head -n 1000 itermae/data/barseq.fastq \
+    head -n 1000 itermae/data/tests/test_input/barseq.fastq \
         | tail -n 400 > test_set.fastq
 
 
@@ -54,6 +54,10 @@ as those tend to be a bit erroneous.
 3. Begin editing a minimal configuration file
 -------------------------------------------------
 
+You can use the command-line argument API for maximal flexibility, see the
+:doc:`examples` for examples, or ``-h`` flag for details.
+
+But I'd instead recommend you use a YAML configuration file.
 There is an example YAML configuration file available at 
 ``itermae/data/example_schema.yml`` that you can copy::
 
@@ -787,7 +791,7 @@ Here, ``-v`` is useful for run-level configuration and messages:
     :stderr:
     :raises:
  
-    cat itermae/data/barseq.fastq \
+    cat itermae/data/tests/test_input/barseq.fastq \
         | parallel --quote --pipe -l 4 --keep-order -N 1000 \
             itermae --config test_config.yml -v \
         > chopped_outputs.sam
