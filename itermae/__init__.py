@@ -767,11 +767,14 @@ class GroupStats:
     :param quality: list of numbers to store under `.quality` attribute
     :type quality: list of int
     """
-    def __init__(self, start, end, quality):
+
+    def __init__(self, start, end, seq, quality):
         self.start = start 
         self.end = end 
         self.length = self.end - self.start
+        self.seq = seq
         self.quality = quality
+
     def flatten(self):
         """Flatten this object for printing debug reports, but just for
         the start, end, length attributes. Not quality.
@@ -780,6 +783,12 @@ class GroupStats:
         :rtype: str
         """
         return str(self.start)+"_"+str(self.end)+"_"+str(self.length)
+
+    def __eq__(self,other):
+        """Attention! This is a hack to allow for using the group's name
+        (ie 'barcode') instead of accessing the '.seq' method.
+        """
+        return str(self.seq.seq) == other
 
 
 class SeqHolder: 
@@ -869,6 +878,7 @@ class SeqHolder:
                 # Then we record the start, end, and length of the matched span
                 self.group_stats[match_name] = \
                     GroupStats(*fuzzy_match.span(match_name),
+                        seq=self.seqs[match_name],
                         quality=self.seqs[match_name].letter_annotations['phred_quality']
                         )
 
@@ -883,10 +893,6 @@ class SeqHolder:
         # This is context for the filters, so is operating more as values,
         # as opposed to the context_seq which is operating with SeqRecords
         self.context_filter = { **self.group_stats , **self.match_scores }
-        for i in self.seqs:
-            if i in self.context_filter.keys():
-                self.context_filter[i].seq = self.seqs[i].seq
-                    # Also adding on the actual sequence, so it's accessible
 
         # Then unpack the sequences as a context for building the output 
         # sequences, this is different so that the qualities get stuck with
@@ -917,11 +923,13 @@ class SeqHolder:
         """
 
         try:
+            filter_result = eval(output_dict['filter'][1],globals(),self.context_filter)
             if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" successfully evaluated the filter "+
-                    str(output_dict['filter'][0]),file=sys.stderr)
-            return eval(output_dict['filter'][1],globals(),self.context_filter)
+                    str(output_dict['filter'][0])+" as "+str(filter_result),
+                    file=sys.stderr)
+            return filter_result
         except:
             if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
@@ -1019,7 +1027,7 @@ class SeqHolder:
         if self.configuration.verbosity >= 2:
             print("\n["+str(time.time())+"] : starting to process : "+
                 self.seqs['input'].id+"\n  "+self.seqs['input'].seq+"\n  "+ 
-                str(self.seqs['input'].letter_annotations['phred_quality']),
+                phred_number_array_to_joined_string(self.seqs['input'].letter_annotations['phred_quality']),
                 file=sys.stderr)
     
         # This should fail if you didn't specify anything taking from input stream!
@@ -1070,6 +1078,14 @@ class SeqHolder:
             if output_record['filter_result'] and output_record['output'] is not None:
                 write_out_seq(output_record['output'], self.configuration.output_fh, self.configuration.output_format, 
                     output_record['name'])
+                if self.configuration.verbosity >= 3:
+                    print("\n["+str(time.time())+"] : wrote out output '"+
+                        output_record['name']+"' for this input",
+                        file=sys.stderr)
             elif self.configuration.failed_fh != None:
                 write_out_seq(self.seqs['input'], self.configuration.failed_fh, self.configuration.input_format, 
                     output_record['name'])
+                if self.configuration.verbosity >= 3:
+                    print("\n["+str(time.time())+"] : output "+
+                        output_record['name']+" failed, written to fail file\n",
+                        file=sys.stderr)
