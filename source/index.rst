@@ -1,7 +1,11 @@
+itermae docs
+==================
+
+
 ``itermae`` is a command-line utility for recognizing and parsing sequence 
-patterns.
-It is intended for processing DNA amplicon sequences from methods such as
+patterns, intended for processing DNA amplicon sequences from methods such as
 barseq, DMS, and scRNAseq.
+Basically, ``itermae`` extracts barcodes using fuzzy regular expressions.
 
 .. toctree::
     :maxdepth: 2
@@ -18,7 +22,7 @@ barseq, DMS, and scRNAseq.
 
 
 Indices
-==================
+^^^^^^^^^^^^^^^^^^^6
 
 * :ref:`genindex`
 * :ref:`search`
