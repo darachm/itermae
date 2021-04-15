@@ -466,7 +466,6 @@ Error in syntax of defining output description
  
 .. jupyter-execute::
     :stderr:
-    :stdout:
     :raises:
  
     head -n 16 test_set.fastq | itermae --config test_config.yml -vvv
