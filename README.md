@@ -1,23 +1,23 @@
 # itermae
 
-Command-line utility to recognize patterns in input sequences and generate 
-outputs from groups recognized. Basically, a utility for applying fuzzy regular
+See the [concept here](https://darachm.gitlab.io/itermae/concept.html) and
+[tutorial here](https://darachm.gitlab.io/itermae/tutorial.html).
+
+`itermae` is a command-line utility to recognize patterns in input sequences 
+and generate outputs from groups recognized. Basically, it uses fuzzy regular
 expression operations to (primarily) DNA sequence for purposes of DNA 
 barcode/tag/UMI parsing, sequence and quality -based filtering, 
 and general output re-arrangment.
 
-See the [concept here](https://darachm.gitlab.io/itermae/concept.html).
-
 ![itermae diagram](https://darachm.gitlab.io/itermae/_images/parse_diagram_1.svg)
 
-Reads and makes FASTQ, FASTA, text-file, and SAM (tab-delimited).
-Designed to function with sequence piped in from tools like GNU `parallel`
+`itermae` reads and makes FASTQ, FASTA, text-file, and SAM (tab-delimited)
+files using [`Biopython`](https://pypi.org/project/biopython/) sequence records
+to represent slice, and read/output formats.
+Pattern matching uses the [`regex`](https://pypi.org/project/regex/) library,
+and the tool is designed to function in command-line pipes from tools like 
+[GNU `parallel`](https://www.gnu.org/software/parallel/)
 to permit light-weight parallelization.
-Matching is handled as strings in 
-[`regex`](https://pypi.org/project/regex/),
-and [`Biopython`](https://pypi.org/project/biopython/) is used to represent,
-slice, and read/output formats.
-Designed for use in command-line shells on a \*nix machine.
 
 # Availability, installation, 'installation'
 
