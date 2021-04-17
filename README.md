@@ -1,7 +1,7 @@
 # itermae
 
 See the [concept here](https://darachm.gitlab.io/itermae/concept.html) and
-[tutorial here](https://darachm.gitlab.io/itermae/tutorial.html).
+[tutorial here](https://darachm.gitlab.io/itermae/usage/tutorial.html).
 
 `itermae` is a command-line utility to recognize patterns in input sequences 
 and generate outputs from groups recognized. Basically, it uses fuzzy regular
@@ -18,6 +18,42 @@ Pattern matching uses the [`regex`](https://pypi.org/project/regex/) library,
 and the tool is designed to function in command-line pipes from tools like 
 [GNU `parallel`](https://www.gnu.org/software/parallel/)
 to permit light-weight parallelization.
+
+It's usage might look something like this:
+
+    zcat seq_data.fastqz | itermae --config my_config.yml -v > output.sam
+
+or 
+
+    zcat seq_data.fastqz \
+        | parallel --quote --pipe -l 4 --keep-order -N 10000 \
+            itermae --config my_config.yml -v > output.sam
+
+with a `my_config.yml` file that may look something like this:
+
+    matches:
+        - use: input
+          pattern: NNNNNGTCCTCGAGGTCTCTNNNNNNNNNNNNNNNNNNNNCGTACGCTGCAGGTC
+          marking: aaaaaBBBBBBBBBBBBBBBccccccccccccccccccccDDDDDDDDDDDDDDD
+          marked_groups:
+              a:
+                  name: sampleIndex
+                  repeat: 5
+              B:
+                  allowed_errors: 2
+              c:
+                  name: barcode
+                  repeat_min: 18
+                  repeat_max: 22
+              D:
+                  allowed_insertions: 1
+                  allowed_deletions: 2
+                  allowed_substititions: 2
+    output_list:
+        -   name: 'barcode'
+            description: 'description+" sample="+sampleIndex'
+            seq: 'barcode'
+            filter: 'statistics.median(barcode.quality) >= 35'
 
 # Availability, installation, 'installation'
 
