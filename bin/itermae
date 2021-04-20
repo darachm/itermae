@@ -132,6 +132,7 @@ if __name__ == '__main__':
             "\n    -vv also prints read-level details."
             "\n     -vvv also prints match-level details.") )
     parser_misc.add_argument("-h","--help",action="store_true",default=False)
+    parser_misc.add_argument("--version",action="store_true",default=False)
 
     # Parse the arguments
     args = parser.parse_args()
@@ -146,6 +147,10 @@ if __name__ == '__main__':
     # print as part of an 'optional' header
     if args.help:
         parser.print_help()
+        exit(1)
+
+    if args.version:
+        print("itermae version 0.6.0, 2021-04-19")
         exit(1)
 
     configuration = itermae.Configuration()

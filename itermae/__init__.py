@@ -14,18 +14,6 @@ import regex
 from Bio import SeqIO
 from Bio import Seq, SeqRecord
 
-# Template for sphinx docstring, from https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html
-#    """[Summary]
-#    
-#    :param [ParamName]: [ParamDescription], defaults to [DefaultParamVal]
-#    :type [ParamName]: [ParamType](, optional)
-#    ...
-#    :raises [ErrorType]: [ErrorDescription]
-#    ...
-#    :return: [ReturnDescription]
-#    :rtype: [ReturnType]
-#    """
-
 # TODO pass description to flags field, but this requires lots of warnings
 # and caveats to the users that they will have to preface the right SAM tag
 # headers and such!
