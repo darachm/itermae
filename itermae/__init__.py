@@ -891,13 +891,14 @@ class SeqHolder:
         self.context_seq = { **self.seqs }
 
         # Then one for the IDs, so we're setting the input ID as 'id', and then
-        # each group name just refers to the sequence. I assume folks are not
-        # wanting to be putting seq qualities in the ID. We do make 
-        # 'description' available if that's important
+        # each group name just refers to the sequence. And I finally put seq 
+        # qualities in the ID. We do make 'description' available if needed
         self.context_id = { 
             'id': self.seqs['input'].id , 
             'description': self.seqs['input'].description , 
-            **{ i: str(self.seqs[i].seq) for i in self.seqs } }
+            **{ i: str(self.seqs[i].seq) for i in self.seqs } ,
+            **{ i+'_quality': self.group_stats[i].quality_string 
+                    for i in self.group_stats } }
 
     def evaluate_filter_of_output(self,output_dict):
         """This tests a user-defined filter on the 'seq_holder' object.
