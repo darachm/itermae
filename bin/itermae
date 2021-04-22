@@ -10,7 +10,6 @@ import time
 import regex # python3 -m pip install regex
 import yaml # python3 -m pip install pyyaml
 
-sys.path.append('../itermae') # For testing while developing... 
 import itermae
 
 if __name__ == '__main__':
