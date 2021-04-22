@@ -5,7 +5,7 @@ with open('README.md','r') as fh:
 
 setuptools.setup(
     name='itermae',
-    version='0.6.0',
+    version='0.6.0.1',
     author='Darach Miller',
     description='Commandline tool for parsing NGS reads by multiple fuzzy '+
         'regex operations',
