@@ -754,6 +754,8 @@ class GroupStats:
     :type length: int
     :param quality: list of numbers to store under `.quality` attribute
     :type quality: list of int
+    :param quality_string: string of the quality array under PHRED encodings
+    :type quality_string: string
     """
 
     def __init__(self, start, end, seq, quality):
@@ -762,6 +764,7 @@ class GroupStats:
         self.length = self.end - self.start
         self.seq = seq
         self.quality = quality
+        self.quality_string = phred_number_array_to_joined_string(quality)
 
     def flatten(self):
         """Flatten this object for printing debug reports, but just for
@@ -918,11 +921,12 @@ class SeqHolder:
                     str(output_dict['filter'][0])+" as "+str(filter_result),
                     file=sys.stderr)
             return filter_result
-        except:
+        except Exception as error:
             if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to evaluate the filter "+
-                    str(output_dict['filter'][0]),file=sys.stderr)
+                    str(output_dict['filter'][0])+". "+
+                    repr(error),file=sys.stderr)
             return False
 
     def build_output(self,output_dict):
@@ -951,13 +955,14 @@ class SeqHolder:
                     "description: '"+str(output_dict['description'][0])+"', and "+
                     "seq: '"+str(output_dict['seq'][0])+"'." ,file=sys.stderr)
             return out_seq
-        except:
+        except Exception as error:
             if self.configuration.verbosity >= 3:
                 print("\n["+str(time.time())+"] : This read "+
                     self.seqs['input'].id+" failed to build the output of "+
                     "id: '"+str(output_dict['id'][0])+"', and "+
                     "description: '"+str(output_dict['description'][0])+"', and "+
-                    "seq: '"+str(output_dict['seq'][0])+"'." ,file=sys.stderr)
+                    "seq: '"+str(output_dict['seq'][0])+"'. "+
+                    repr(error) ,file=sys.stderr)
             return None
 
     def format_report(self,label,output_seq):
