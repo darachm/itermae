@@ -1,8 +1,7 @@
 # For help, do `make help` ( idea from SoftwareCarpentry and victoria.dev )
 
 .PHONY: help container run-demos clean dist-pkg dist-files upload-pypi \
-	docs \
-	upload-testpypi profiler-runs 
+	docs upload-testpypi profiler-runs docker_build docker_push
 
 help: ## Display help
 	@echo 'Commands/rules to run:'
@@ -10,20 +9,6 @@ help: ## Display help
 
 docs: source ## Build sphinx documentation
 	sphinx-build -b html source docs
-
-demo: demo/demos_and_tutorial_itermae.html ## Typeset the demo jupyter notebook
-
-%.html : %.ipynb
-	jupyter nbconvert --to=html --ExecutePreprocessor.timeout=-1 \
-		--ExecutePreprocessor.allow_errors=True \
-		--execute $<
-
-clean: ## Cleanup the demo outputs 
-	rm demo/failed.fastq || echo ""
-	rm demo/out.sam || echo ""
-	rm demo/report.csv || echo ""
-
-pkg-files=setup.py bin/itermae itermae/__init__.py
 
 install: dist-files ## Reinstall from this locally assembled package
 	python3 -m pip install dist/*.whl --force-reinstall
@@ -37,6 +22,8 @@ test: test-install ## Reinstall and run pytest
 just-test: ## Just run pytest to test the tests
 	pytest
 
+pkg-files=setup.py bin/itermae itermae/__init__.py
+
 dist-files: $(pkg-files) ## Make distribution files for pypi
 	rm dist/* || echo""
 	python3 setup.py sdist bdist_wheel
@@ -44,7 +31,7 @@ dist-files: $(pkg-files) ## Make distribution files for pypi
 upload-pypi: dist-files ## Upload distribution files for pypi
 	python3 -m twine upload --repository pypi dist/*
 
-upload-testpypi: dist-files ## Upload distribution files for TEST pypi
+upload-testpypi: dist-files ## Upload distribution files for TEST pypi repo
 	python3 -m twine upload --repository testpypi dist/*
 
 profiler-runs: ## Run profiler experiments to look for performance tweaks with snakeviz
