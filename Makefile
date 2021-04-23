@@ -54,15 +54,15 @@ itermae_%.simg : Singularity.% ## Build Singularity container from recipe
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<
 
-itermae_test_base.simg : Singularity.test_base
+docker_build: ## Build Docker images for itermae:latest and itermae:plus
+	docker build . --target itermae -t darachm/itermae
+	docker build . --target itermae-plus -t darachm/itermae:plus
+
+docker_push: docker_build ## Push the docker images for itermae:latest, itermae:plus to docker hub
+	docker push darachm/itermae
+	docker push darachm/itermae:plus
+
+%.simg : Singularity.%
 	sudo rm -r $@ || echo "already gone"
 	sudo singularity build $@ $<
-
-itermae_test.simg : Singularity.test itermae_test_base.simg dist-files
-	sudo rm -r $@ || echo "already gone"
-	sudo singularity build $@ $<
-
-itermae_test_sandbox.simg : Singularity.test itermae_test_base.simg dist-files
-	sudo rm -r $@ || echo "already gone"
-	sudo singularity build --sandbox $@ $<
 
